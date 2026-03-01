@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 BACKEND_DIR = ROOT / "backend"
 os.chdir(BACKEND_DIR)
 if str(BACKEND_DIR) not in sys.path:
@@ -66,7 +66,7 @@ class _FakeAgent:
         self.live_session = object() if has_live else None
 
 
-def _run_active_agent_check() -> bool:
+def test_active_agent_routing():
     sid = "LIVEKIT_SYSTEM_CHECK"
     agents = {
         "atlas": _FakeAgent("atlas_CHECK"),
@@ -76,38 +76,22 @@ def _run_active_agent_check() -> bool:
     register_agents(sid, agents)
 
     first = select_voice_agent(sid)
-    if not first or first.agent_id != "atlas_CHECK":
-        print("ROUTING FAIL: default active agent mismatch")
-        return False
+    assert first is not None and first.agent_id == "atlas_CHECK", "ROUTING FAIL: default active agent mismatch"
 
     targeted = select_voice_agent(sid, "nova_CHECK")
-    if not targeted or targeted.agent_id != "nova_CHECK":
-        print("ROUTING FAIL: target handoff mismatch")
-        return False
+    assert targeted is not None and targeted.agent_id == "nova_CHECK", "ROUTING FAIL: target handoff mismatch"
 
-    if get_active_voice_agent_id(sid) != "nova_CHECK":
-        print("ROUTING FAIL: active agent state not persisted")
-        return False
-
-    print("ROUTING PASS: active-agent handoff logic")
-    return True
+    assert get_active_voice_agent_id(sid) == "nova_CHECK", "ROUTING FAIL: active agent state not persisted"
 
 
-def main() -> int:
+def test_livekit_environment():
     env = _parse_env(BACKEND_DIR / ".env")
     env_ok = _print_env_status(env)
+    assert env_ok, "Missing required environment variables"
 
     settings = get_settings()
     model_ok = settings.text_model == "gemini-3-flash-preview"
-    print(
-        f"MODEL text_model: {settings.text_model} "
-        f"({'PASS' if model_ok else 'FAIL'})"
-    )
     backend_ok = settings.voice_backend == "livekit_elevenlabs"
-    print(
-        f"VOICE_BACKEND runtime: {settings.voice_backend} "
-        f"({'PASS' if backend_ok else 'FAIL'})"
-    )
 
     eleven_ok = False
     if settings.elevenlabs_api_key:
@@ -130,32 +114,15 @@ def main() -> int:
 
             count = asyncio.run(_check())
             eleven_ok = count > 0
-            print(f"ELEVENLABS VOICES: {'PASS' if eleven_ok else 'FAIL'} ({count})")
         except Exception as e:
-            print(f"ELEVENLABS VOICES: FAIL ({e})")
-    else:
-        print("ELEVENLABS VOICES: FAIL (ELEVENLABS_API_KEY missing)")
+            pass
 
     ping_ok = False
     if is_livekit_configured():
         ping_ok, ping_msg = ping_livekit()
-        print(f"LIVEKIT PING: {'PASS' if ping_ok else 'FAIL'} - {ping_msg}")
-    else:
-        print("LIVEKIT PING: SKIP - LiveKit not configured in runtime env")
 
-    routing_ok = _run_active_agent_check()
-
-    overall = (
-        env_ok
-        and model_ok
-        and backend_ok
-        and eleven_ok
-        and routing_ok
-        and (ping_ok if is_livekit_configured() else True)
-    )
-    print(f"OVERALL: {'PASS' if overall else 'FAIL'}")
-    return 0 if overall else 1
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+    assert model_ok, "Model check failed"
+    assert backend_ok, "Voice backend check failed"
+    assert eleven_ok, "Elevenlabs API check failed"
+    if is_livekit_configured():
+        assert ping_ok, "LiveKit ping failed"

@@ -12,7 +12,7 @@ import os
 import sys
 
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 BACKEND_DIR = os.path.join(ROOT, "backend")
 if BACKEND_DIR not in sys.path:
     sys.path.insert(0, BACKEND_DIR)
@@ -30,7 +30,7 @@ class _FakeAgent:
         self.live_session = object() if has_live else None
 
 
-def run() -> int:
+def test_routing_smoke():
     session_id = "LIVEKIT_SMOKE"
     agents = {
         "atlas": _FakeAgent("atlas_TEST"),
@@ -40,31 +40,24 @@ def run() -> int:
 
     register_agents(session_id, agents)
 
-    # 1) In single-agent mode, registry is hard-trimmed to one live agent.
+    # 1) Default selection -> first live session
     first = select_voice_agent(session_id)
     assert first is not None, "Expected a selected agent"
     assert first.agent_id == "atlas_TEST", f"Unexpected default agent: {first.agent_id}"
     assert get_active_voice_agent_id(session_id) == "atlas_TEST"
 
-    # 2) Explicit target to another agent should NOT switch in single-agent guard mode.
+    # 2) Explicit target to another agent SHOULD switch in multi-agent guard mode.
     targeted = select_voice_agent(session_id, "nova_TEST")
     assert targeted is not None, "Expected targeted agent selection"
-    assert targeted.agent_id == "atlas_TEST"
-    assert get_active_voice_agent_id(session_id) == "atlas_TEST"
+    assert targeted.agent_id == "nova_TEST"
+    assert get_active_voice_agent_id(session_id) == "nova_TEST"
 
     # 3) Invalid target should preserve current active responder.
     fallback = select_voice_agent(session_id, "missing_agent")
     assert fallback is not None
-    assert fallback.agent_id == "atlas_TEST", "Active responder should remain atlas"
+    assert fallback.agent_id == "nova_TEST", "Active responder should remain nova"
 
     # 4) Non-live target should not steal routing.
     non_live = select_voice_agent(session_id, "cipher_TEST")
     assert non_live is not None
-    assert non_live.agent_id == "atlas_TEST", "Non-live agent must not become active"
-
-    print("PASS: livekit_turn_routing_smoke")
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(run())
+    assert non_live.agent_id == "nova_TEST", "Non-live agent must not become active"

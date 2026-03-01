@@ -169,7 +169,7 @@ export default function AgentVoicePods({ agents, liveTranscripts = {}, activeSpe
                   gap: "4px",
                 }}
               >
-                {isSpeaking ? "🎙️ SPEAKING" : isThinking ? "💭 PROCESSING" : isConflicted ? "⚡ CONFLICTING" : "👂 LISTENING"}
+                {isSpeaking ? "🎙️ SPEAKING" : isThinking ? "💭 PROCESSING" : isConflicted ? "⚡ CONFLICTING" : "IDLE"}
                 {isThinking && (
                   <span style={{ display: "flex", gap: "2px" }}>
                     <span className="thinking-dot-1">.</span>

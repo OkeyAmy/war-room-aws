@@ -315,7 +315,19 @@ export default function WarRoomPage() {
     const decisionIdx = useRef(0);
 
     // ── Audio player for agent voices ─────────────────────────────────────────
-    const { playChunk, stopAgent, stopAll: stopAllAgents, ensureContext } = useAudioPlayer();
+    const handlePlaybackEnd = useCallback((agentId: string) => {
+        setAgents(prev => prev.map(a =>
+            a.id === agentId ? { ...a, status: "listening" as const } : a
+        ));
+        if (activeSpeakerRef.current === agentId) {
+            setActiveSpeakerId(null);
+            activeSpeakerRef.current = null;
+        }
+    }, []);
+
+    const { playChunk, stopAgent, stopAll: stopAllAgents, ensureContext, isAgentPlaying } = useAudioPlayer({
+        onPlaybackEnd: handlePlaybackEnd
+    });
     const audioInitializedRef = useRef(false);
 
     // Ref that mirrors activeSpeakerId — used in audio chunk handler
@@ -340,6 +352,9 @@ export default function WarRoomPage() {
             case "agent_status_change": {
                 const agentId = p.agent_id as string;
                 const newStatus = p.status as string;
+                if ((newStatus === "idle" || newStatus === "listening") && isAgentPlaying(agentId)) {
+                    return;
+                }
                 setAgents(prev => prev.map(a =>
                     a.id === agentId
                         ? { ...a, status: (newStatus === "idle" ? "listening" : newStatus) as Agent["status"] }
@@ -382,11 +397,16 @@ export default function WarRoomPage() {
                 const fullText = p.full_transcript as string;
                 // Do not force-stop playback here; let queued audio finish naturally.
                 setAgents(prev => prev.map(a =>
-                    a.id === agentId ? { ...a, status: "listening" as const, lastWords: fullText || a.lastWords } : a
+                    a.id === agentId ? { ...a, lastWords: fullText || a.lastWords } : a
                 ));
-                if (activeSpeakerRef.current === agentId) {
-                    setActiveSpeakerId(null);
-                    activeSpeakerRef.current = null;
+                if (!isAgentPlaying(agentId)) {
+                    setAgents(prev => prev.map(a =>
+                        a.id === agentId ? { ...a, status: "listening" as const } : a
+                    ));
+                    if (activeSpeakerRef.current === agentId) {
+                        setActiveSpeakerId(null);
+                        activeSpeakerRef.current = null;
+                    }
                 }
                 // Add to feed
                 const agentName = agents.find(a => a.id === agentId)?.name ?? agentId;
@@ -576,20 +596,22 @@ export default function WarRoomPage() {
             }
             case "turn_ended": {
                 const agentId = p.agent_id as string;
-                if (activeSpeakerRef.current === agentId) {
-                    setActiveSpeakerId(null);
-                    activeSpeakerRef.current = null;
+                if (!isAgentPlaying(agentId)) {
+                    if (activeSpeakerRef.current === agentId) {
+                        setActiveSpeakerId(null);
+                        activeSpeakerRef.current = null;
+                    }
+                    setAgents(prev => prev.map(a =>
+                        a.id === agentId ? { ...a, status: "listening" as const } : a
+                    ));
                 }
-                setAgents(prev => prev.map(a =>
-                    a.id === agentId ? { ...a, status: "listening" as const } : a
-                ));
                 break;
             }
             default:
                 break;
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [agents, resolutionScore, sessionId, token, stopAgent]);
+    }, [agents, resolutionScore, sessionId, token, stopAgent, isAgentPlaying]);
 
     // ── Audio chunk handler ───────────────────────────────────────────────────
     // AUDIO GATE: Only play audio from the active speaker.

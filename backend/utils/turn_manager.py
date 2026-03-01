@@ -33,6 +33,7 @@ class TurnManager:
         self._chairman_interrupt = asyncio.Event()
         self._session_ended = asyncio.Event()
         self._turn_start_time: float = 0
+        self.last_turn_end_time: float = time.monotonic()
         # Inter-turn cooldown — prevents rapid re-acquisition
         self._cooldown_until: float = 0
         # Max seconds one agent may speak (safety valve — Gemini usually ends turns)
@@ -143,7 +144,9 @@ class TurnManager:
             return  # not holding the lock
         self._current_speaker = None
         # Set cooldown to prevent immediate re-acquisition
-        self._cooldown_until = time.monotonic() + 0.3
+        now = time.monotonic()
+        self._cooldown_until = now + 0.3
+        self.last_turn_end_time = now
         try:
             self._lock.release()
         except RuntimeError:

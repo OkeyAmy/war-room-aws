@@ -101,115 +101,121 @@ def start_discussion_loop(session_id: str) -> None:
             tm = _turn_managers.get(session_id)
             if not tm or tm.is_session_ended():
                 break
-            agents_map = get_agents(session_id)
-            connected = _voice_connected_agents.get(session_id, set())
-            agents = [
-                a for _, a in agents_map.items()
-                if getattr(a, "live_session", None)
-                and getattr(a, "agent_id", "") in connected
-            ]
-            if not agents:
-                await asyncio.sleep(1.0)
-                continue
 
-            # MULTI-AGENT: commented out single-voice filter — all connected agents participate
-            # if settings.single_agent_voice_mode:
-            #     active_id = _active_voice_agents.get(session_id)
-            #     if active_id:
-            #         only = _resolve_agent(session_id, active_id)
-            #         agents = [only] if only and getattr(only, "live_session", None) else []
-            #     else:
-            #         agents = []
-            #     if not agents:
-            #         await asyncio.sleep(1.0)
-            #         continue
-
-            # If someone already has the floor, wait.
-            if not tm.is_floor_free():
-                await asyncio.sleep(0.6)
-                continue
-
-            # MULTI-AGENT: commented out single-voice agent selection — use round-robin for all
-            # if settings.single_agent_voice_mode:
-            #     agent = agents[0]
-            # else:
-            idx = _discussion_cursor.get(session_id, 0) % len(agents)
-            agent = agents[idx]
-            _discussion_cursor[session_id] = (idx + 1) % len(agents)
-            previous_agent_id = _discussion_last_agent.get(session_id)
-            _discussion_last_agent[session_id] = getattr(agent, "agent_id", "")
-
-            # Pull fresh board context so autonomous rounds stay scenario-grounded.
-            crisis = {}
             try:
-                doc = await db.collection(COLLECTION_CRISIS_SESSIONS).document(session_id).get()
-                if doc.exists:
-                    crisis = doc.to_dict() or {}
-            except Exception as e:
-                logger.debug(f"[LIVEKIT_AGENT_LOOP] failed reading crisis doc: {e}")
+                agents_map = get_agents(session_id)
+                connected = _voice_connected_agents.get(session_id, set())
+                agents = [
+                    a for _, a in agents_map.items()
+                    if getattr(a, "live_session", None)
+                    and getattr(a, "agent_id", "") in connected
+                ]
+                if not agents:
+                    await asyncio.sleep(1.0)
+                    continue
 
-            open_conflicts = crisis.get("open_conflicts", [])
-            latest_conflict = open_conflicts[-1] if open_conflicts else {}
-            critical_intel = crisis.get("critical_intel", [])
-            latest_intel = critical_intel[-1] if critical_intel else {}
-            previous_claim = ""
-            if previous_agent_id:
-                previous_claim = (crisis.get(f"agent_last_statement_{previous_agent_id}") or "").strip()
+                # If someone already has the floor, wait.
+                if not tm.is_floor_free():
+                    await asyncio.sleep(0.6)
+                    continue
 
-            char_name = getattr(agent, "role_config", {}).get("character_name", "Agent")
-            target_hint = ""
-            if previous_agent_id and previous_agent_id != getattr(agent, "agent_id", ""):
-                target_hint = (
-                    f"Address {previous_agent_id} directly and challenge or support their last claim. "
-                )
+                idx = _discussion_cursor.get(session_id, 0) % len(agents)
+                agent = agents[idx]
+                _discussion_cursor[session_id] = (idx + 1) % len(agents)
+                previous_agent_id = _discussion_last_agent.get(session_id)
+                _discussion_last_agent[session_id] = getattr(agent, "agent_id", "")
 
-            # Deterministic conversation phases:
-            #   1) intro: each agent introduces themselves exactly once
-            #   2) debate: structured pushback based on live board state
-            agent_id = getattr(agent, "agent_id", "")
-            introduced = _introduced_agents.get(session_id, set())
-            if _discussion_phase.get(session_id) == "intro" and agent_id not in introduced:
-                prompt = (
-                    "INTRO ROUND.\n"
-                    f"You are {char_name}. Introduce yourself in 2-3 sentences.\n"
-                    "State your role priority and one immediate concern about this crisis.\n"
-                    "Do not output JSON or tool-call traces."
-                )
-                introduced.add(agent_id)
-                _introduced_agents[session_id] = introduced
-                if len(introduced) >= len(agents):
+                # Pull fresh board context so autonomous rounds stay scenario-grounded.
+                crisis = {}
+                try:
+                    doc = await db.collection(COLLECTION_CRISIS_SESSIONS).document(session_id).get()
+                    if doc.exists:
+                        crisis = doc.to_dict() or {}
+                except Exception as e:
+                    logger.debug(f"[LIVEKIT_AGENT_LOOP] failed reading crisis doc: {e}")
+
+                open_conflicts = crisis.get("open_conflicts", [])
+                latest_conflict = open_conflicts[-1] if open_conflicts else {}
+                critical_intel = crisis.get("critical_intel", [])
+                latest_intel = critical_intel[-1] if critical_intel else {}
+                previous_claim = ""
+                if previous_agent_id:
+                    previous_claim = (crisis.get(f"agent_last_statement_{previous_agent_id}") or "").strip()
+
+                char_name = getattr(agent, "role_config", {}).get("character_name", "Agent")
+                target_hint = ""
+                if previous_agent_id and previous_agent_id != getattr(agent, "agent_id", ""):
+                    target_hint = (
+                        f"Address {previous_agent_id} directly and challenge or support their last claim. "
+                    )
+
+                # Deterministic conversation phases:
+                #   1) intro: each agent introduces themselves exactly once
+                #   2) debate: structured pushback based on live board state
+                agent_id = getattr(agent, "agent_id", "")
+                introduced = _introduced_agents.get(session_id, set())
+                if _discussion_phase.get(session_id) == "intro" and agent_id not in introduced:
+                    prompt = (
+                        "INTRO ROUND.\n"
+                        f"You are {char_name}. Introduce yourself in 2-3 sentences.\n"
+                        "State your role priority and one immediate concern about this crisis.\n"
+                        "Do not output JSON or tool-call traces."
+                    )
+                    introduced.add(agent_id)
+                    _introduced_agents[session_id] = introduced
+                    if len(introduced) >= len(agents):
+                        _discussion_phase[session_id] = "debate"
+                else:
                     _discussion_phase[session_id] = "debate"
-            else:
-                _discussion_phase[session_id] = "debate"
-                prompt = (
-                    "DEBATE ROUND.\n"
-                    f"You are {char_name}. Keep the room moving without waiting for the Chairman.\n"
-                    f"Crisis brief: {crisis.get('crisis_brief', '')}\n"
-                    f"Threat={crisis.get('threat_level', 'elevated')} "
-                    f"Score={crisis.get('resolution_score', 50)}\n"
-                    f"Latest conflict: {latest_conflict.get('description', 'none')}\n"
-                    f"Latest intel: {latest_intel.get('text', 'none')}\n"
-                    f"Prior claim to react to: {previous_claim or 'none'}\n\n"
-                    f"{target_hint}"
-                    "Speak 3-5 sentences. Explicitly challenge or support one other agent. "
-                    "If disagreement sharpens, call write_open_conflict(). "
-                    "If consensus forms, call write_agreed_decision(). "
-                    "Do not output JSON or tool-call traces."
-                )
+                    prompt = (
+                        "DEBATE ROUND.\n"
+                        f"You are {char_name}. Keep the room moving without waiting for the Chairman.\n"
+                        f"Crisis brief: {crisis.get('crisis_brief', '')}\n"
+                        f"Threat={crisis.get('threat_level', 'elevated')} "
+                        f"Score={crisis.get('resolution_score', 50)}\n"
+                        f"Latest conflict: {latest_conflict.get('description', 'none') if isinstance(latest_conflict, dict) else latest_conflict}\n"
+                        f"Latest intel: {latest_intel.get('text', 'none') if isinstance(latest_intel, dict) else latest_intel}\n"
+                        f"Prior claim to react to: {previous_claim or 'none'}\n\n"
+                        f"{target_hint}"
+                        "Speak 3-5 sentences. Explicitly challenge or support one other agent. "
+                        "If disagreement sharpens, call write_open_conflict(). "
+                        "If consensus forms, call write_agreed_decision(). "
+                        "Do not output JSON or tool-call traces."
+                    )
 
-            # Rotate active responder target and prompt a concise turn.
-            _active_voice_agents[session_id] = getattr(agent, "agent_id", "")
-            try:
-                await agent.send_text(prompt)
-                logger.info(
-                    f"[LIVEKIT_AGENT_LOOP] dispatched turn session={session_id} "
-                    f"agent={getattr(agent, 'agent_id', 'unknown')} "
-                    f"phase={_discussion_phase.get(session_id)}"
-                )
+                # Rotate active responder target and prompt a concise turn.
+                _active_voice_agents[session_id] = getattr(agent, "agent_id", "")
+                try:
+                    await agent.send_text(prompt)
+                    logger.info(
+                        f"[LIVEKIT_AGENT_LOOP] dispatched turn session={session_id} "
+                        f"agent={getattr(agent, 'agent_id', 'unknown')} "
+                        f"phase={_discussion_phase.get(session_id)}"
+                    )
+                except Exception as e:
+                    logger.warning(f"[LIVEKIT_AGENT_LOOP] dispatch failed: {e}")
+
+                # Wait for the agent to start speaking (acquiring the floor)
+                wait_for_acquire = 0
+                while tm.is_floor_free() and wait_for_acquire < 30:
+                    await asyncio.sleep(1.0)
+                    wait_for_acquire += 1
+
+                # Once the agent has the floor, wait until they finish speaking
+                while not tm.is_floor_free():
+                    await asyncio.sleep(1.0)
+
+                # Enforce 5 to 8 second silence between agent turns
+                import random
+                import time
+                target_silence = random.uniform(5.5, 8.0)
+                while time.monotonic() - tm.last_turn_end_time < target_silence:
+                    if tm.is_session_ended() or not tm.is_floor_free():
+                        break
+                    await asyncio.sleep(0.5)
             except Exception as e:
-                logger.warning(f"[LIVEKIT_AGENT_LOOP] dispatch failed: {e}")
-
-            await asyncio.sleep(10.0)
+                logger.error(f"[LIVEKIT_AGENT_LOOP] fatal error: {e}", exc_info=True)
+                await asyncio.sleep(5.0)
 
         logger.info(f"[LIVEKIT_AGENT_LOOP] stopped for session {session_id}")
 

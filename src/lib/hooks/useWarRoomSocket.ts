@@ -206,7 +206,11 @@ export function useWarRoomSocket({
  *
  * MUST call ensureContext() from a user gesture before audio plays.
  */
-export function useAudioPlayer() {
+export interface UseAudioPlayerOptions {
+    onPlaybackEnd?: (agentId: string) => void;
+}
+
+export function useAudioPlayer(options?: UseAudioPlayerOptions) {
     const ctxRef = useRef<AudioContext | null>(null);
 
     // ── GLOBAL GATE ────────────────────────────────────────────────────
@@ -296,6 +300,7 @@ export function useAudioPlayer() {
                         (activeSourcesMap.current[agentId]?.length ?? 0) === 0
                     ) {
                         activeSpeakerRef.current = null;
+                        options?.onPlaybackEnd?.(agentId);
                     }
                 };
 
@@ -339,5 +344,9 @@ export function useAudioPlayer() {
         return () => { ctxRef.current?.close(); };
     }, []);
 
-    return { playChunk, stopAgent, stopAll, ensureContext };
+    const isAgentPlaying = useCallback((agentId: string) => {
+        return (activeSourcesMap.current[agentId]?.length ?? 0) > 0;
+    }, []);
+
+    return { playChunk, stopAgent, stopAll, ensureContext, isAgentPlaying };
 }

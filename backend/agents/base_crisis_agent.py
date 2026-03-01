@@ -21,6 +21,7 @@ import uuid
 import logging
 import re
 import time
+import random
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -524,7 +525,7 @@ class CrisisAgent:
                 if not self.text_in_queue.empty():
                     text = await self.text_in_queue.get()
                     if text:
-                        await self._generate_and_speak_reply(text)
+                        await self._generate_and_speak_reply(text, is_directive=True)
                     continue
 
                 try:
@@ -542,7 +543,7 @@ class CrisisAgent:
 
                 transcript = await self._transcribe_pcm(b"".join(chunks))
                 if transcript:
-                    await self._generate_and_speak_reply(transcript)
+                    await self._generate_and_speak_reply(transcript, is_directive=False)
 
             except asyncio.CancelledError:
                 break
@@ -676,7 +677,7 @@ class CrisisAgent:
             return False
         return t in a or a.startswith(t)
 
-    async def _generate_and_speak_reply(self, user_text: str) -> None:
+    async def _generate_and_speak_reply(self, user_text: str, is_directive: bool = False) -> None:
         from utils.events import push_event, push_event_direct
         from config.constants import (
             EVENT_AGENT_THINKING,
@@ -723,29 +724,21 @@ class CrisisAgent:
             )
             try:
                 if self.turn_manager:
-                    acquired = await self.turn_manager.try_acquire_turn(self.agent_id)
+                    if is_directive:
+                        wait_start = time.monotonic()
+                        while True:
+                            acquired = await self.turn_manager.try_acquire_turn(self.agent_id)
+                            if acquired or time.monotonic() - wait_start > 45.0:
+                                break
+                            await asyncio.sleep(0.5)
+                    else:
+                        acquired = await self.turn_manager.try_acquire_turn(self.agent_id)
+                        
                     if not acquired:
                         return
                     holding_turn = True
 
-                await push_event(self.session_id, EVENT_AGENT_SPEAKING_START, {
-                    "agent_id": self.agent_id,
-                    "character_name": self.role_config.get("character_name", "Agent"),
-                    "voice_name": self.assigned_voice,
-                })
-                await push_event(self.session_id, EVENT_AGENT_STATUS_CHANGE, {
-                    "agent_id": self.agent_id,
-                    "status": "speaking",
-                    "previous_status": "thinking",
-                })
-                await self._update_roster_status("speaking", "thinking")
-                await push_event_direct(
-                    self.session_id,
-                    EVENT_AGENT_SPEAKING_CHUNK,
-                    {"agent_id": self.agent_id, "transcript_chunk": reply_text},
-                    source_agent_id=self.agent_id,
-                )
-
+                first_chunk = True
                 synthesis_ok = False
                 for attempt in range(1, 4):
                     try:
@@ -753,6 +746,26 @@ class CrisisAgent:
                         if not tts_stream:
                             break
                         async for ev in tts_stream:
+                            if first_chunk:
+                                await push_event(self.session_id, EVENT_AGENT_SPEAKING_START, {
+                                    "agent_id": self.agent_id,
+                                    "character_name": self.role_config.get("character_name", "Agent"),
+                                    "voice_name": self.assigned_voice,
+                                })
+                                await push_event(self.session_id, EVENT_AGENT_STATUS_CHANGE, {
+                                    "agent_id": self.agent_id,
+                                    "status": "speaking",
+                                    "previous_status": "thinking",
+                                })
+                                await self._update_roster_status("speaking", "thinking")
+                                await push_event_direct(
+                                    self.session_id,
+                                    EVENT_AGENT_SPEAKING_CHUNK,
+                                    {"agent_id": self.agent_id, "transcript_chunk": reply_text},
+                                    source_agent_id=self.agent_id,
+                                )
+                                first_chunk = False
+
                             if (
                                 allow_interruptions
                                 and self.turn_manager
@@ -1068,18 +1081,35 @@ class CrisisAgent:
 
         while self._running and self.live_session:
             try:
-                await asyncio.sleep(8)  # Check frequently to keep flow active
+                # Poll frequently to accurately hit the 5-8s silence window
+                await asyncio.sleep(1.0)
 
                 if not self._running or not self.live_session:
                     break
 
                 # ── Turn gating: skip if someone else is speaking ─────
                 if self.turn_manager and not self.turn_manager.is_floor_free():
-                    logger.debug(
-                        f"[{self.agent_id}] Auto-trigger skipped — "
-                        f"{self.turn_manager.current_speaker} holds the floor"
-                    )
                     continue
+
+                if self.turn_manager:
+                    # Each agent picks a random silence target for their next autonomous turn
+                    target_silence = getattr(self, '_current_target_silence', 0)
+                    if not target_silence:
+                        self._current_target_silence = random.uniform(5.5, 8.0)
+                        target_silence = self._current_target_silence
+
+                    silent_duration = time.monotonic() - self.turn_manager.last_turn_end_time
+                    if silent_duration < target_silence:
+                        continue
+                        
+                    # Target reached! Try to trigger, and pick a new target for next time
+                    self._current_target_silence = random.uniform(5.5, 8.0)
+                    
+                    # Prevent multiple agents from triggering simultaneously (due to same polling cycle)
+                    last_trigger = getattr(self.turn_manager, 'last_autonomous_trigger', 0)
+                    if time.monotonic() - last_trigger < 6.0:
+                        continue
+                    self.turn_manager.last_autonomous_trigger = time.monotonic()
 
                 # Read shared board state
                 try:
