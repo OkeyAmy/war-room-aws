@@ -31,7 +31,7 @@ class Settings(BaseSettings):
 
     # Gemini Models
     # LLM reasoning model for agent content generation.
-    text_model: str = "gemini-3-flash-preview"
+    text_model: str = "gemini-2.5-pro" # "gemini-3-flash-preview"
     # Legacy realtime model (used only if voice_backend="gemini_live").
     live_model: str = "gemini-2.5-flash-native-audio-preview-12-2025"
 

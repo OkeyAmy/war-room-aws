@@ -12,6 +12,7 @@ import CrisisBoard, {
 } from "@/components/war-room/CrisisBoard";
 import CrisisFeed, { type FeedItem } from "@/components/war-room/CrisisFeed";
 import AgentVoicePods from "@/components/war-room/AgentVoicePods";
+import AgentDetailsOverlay from "@/components/war-room/AgentDetailsOverlay";
 import {
     RoomIntelligence,
     CrisisPosture,
@@ -246,6 +247,8 @@ export default function WarRoomPage() {
     const [token, setToken] = useState<string | null>(null);
     const [chairmanName, setChairmanName] = useState("DIRECTOR");
     const [crisisTitle, setCrisisTitle] = useState("OPERATION BLACKSITE — SECTOR 7 BREACH");
+    const [crisisDomain, setCrisisDomain] = useState("");
+    const [crisisBrief, setCrisisBrief] = useState("");
     const [threatLevel, setThreatLevel] =
         useState<"CONTAINED" | "ELEVATED" | "CRITICAL" | "MELTDOWN">("CRITICAL");
 
@@ -283,6 +286,7 @@ export default function WarRoomPage() {
         { label: "Intel Coverage", value: Math.min(100, intel.length * 12 + 25), positive: true },
     ];
     const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+    const [showAgentDetailsId, setShowAgentDetailsId] = useState<string | null>(null);
     const [voicePods, setVoicePods] = useState<VoicePodState[]>([]);
     const [connectedPodAgents, setConnectedPodAgents] = useState<Set<string>>(new Set());
     const [activeSpeakerId, setActiveSpeakerId] = useState<string | null>(null);
@@ -662,6 +666,8 @@ export default function WarRoomPage() {
             try {
                 const state = await getSessionState(creds.sessionId, creds.token);
                 if (state.crisis_title) setCrisisTitle(state.crisis_title);
+                if (state.crisis_domain) setCrisisDomain(state.crisis_domain);
+                if (state.crisis_brief) setCrisisBrief(state.crisis_brief);
                 if (state.threat_level) setThreatLevel(threatStringToLabel(state.threat_level));
                 if (state.resolution_score) {
                     setResolutionScore(state.resolution_score);
@@ -696,6 +702,8 @@ export default function WarRoomPage() {
                     const scenario = await getScenario(creds.sessionId, creds.token);
                     if (scenario.scenario_ready) {
                         const full = scenario as import("@/lib/api").ScenarioResponse;
+                        if (full.crisis_domain) setCrisisDomain(full.crisis_domain);
+                        if (full.crisis_brief) setCrisisBrief(full.crisis_brief);
                         if (full.agents?.length) {
                             setAgents(full.agents.slice(0, 4).map(scenarioAgentToRosterAgent));
                             setTrustScores(full.agents.map(a => ({
@@ -1231,6 +1239,8 @@ export default function WarRoomPage() {
             {/* ── Top Command Bar ─────────────────────────────────── */}
             <TopCommandBar
                 crisisTitle={crisisTitle}
+                crisisDomain={crisisDomain}
+                crisisBrief={crisisBrief}
                 threatLevel={threatLevel}
                 micActive={chairmanMic.isActive}
                 sessionTimeLeft={sessionTimeLeft}
@@ -1269,7 +1279,10 @@ export default function WarRoomPage() {
                                 selectedAgentId={selectedAgentId}
                                 onSelectAgent={(id) => {
                                     setSelectedAgentId(id);
-                                    if (id) handleAddressAgent(id);
+                                    if (id) {
+                                        handleAddressAgent(id);
+                                        setShowAgentDetailsId(id);
+                                    }
                                 }}
                                 onDismissAgent={handleDismissAgent}
                                 onSilenceAgent={handleSilenceAgent}
@@ -1478,6 +1491,16 @@ export default function WarRoomPage() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* ── Agent Details Overlay ──────────────────────────────── */}
+            {showAgentDetailsId && sessionId && token && (
+                <AgentDetailsOverlay
+                    sessionId={sessionId}
+                    token={token}
+                    agentId={showAgentDetailsId}
+                    onClose={() => setShowAgentDetailsId(null)}
+                />
             )}
 
             {/* ── WS Connection Status (debug) ─────────────────────── */}

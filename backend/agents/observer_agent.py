@@ -82,7 +82,7 @@ Rules:
 - WORLD MODEL UPDATES: Extract any newly formed Agreed Decisions, Open Conflicts, or Critical Intel from the transcript. Only include these if they are NEWLY established in this specific transcript chunk. Do not repeat existing ones.
 - If no insight is warranted, set insight_type to null.
 - Be precise. One insight per analysis, or none.
-- Output ONLY the JSON object. No explanatory text.
+- Output ONLY the JSON object. No explanatory text. Do not wrap the output in Markdown code blocks (e.g. ```json).
 """
 
 
@@ -222,7 +222,23 @@ class ObserverAgent:
                         final_response_text = event.content.parts[0].text
 
                 if final_response_text:
-                    output = json.loads(final_response_text)
+                    cleaned_text = final_response_text.strip()
+                    if cleaned_text.startswith("```json"):
+                        cleaned_text = cleaned_text[7:]
+                    elif cleaned_text.startswith("```"):
+                        cleaned_text = cleaned_text[3:]
+                    if cleaned_text.endswith("```"):
+                        cleaned_text = cleaned_text[:-3]
+                    cleaned_text = cleaned_text.strip()
+                    
+                    if not cleaned_text:
+                        output = self._generate_default_analysis(transcript, agent_id)
+                    else:
+                        try:
+                            output = json.loads(cleaned_text)
+                        except json.JSONDecodeError as e:
+                            logger.error(f"Observer LLM analysis JSON error: {e}. Raw text: {final_response_text}")
+                            output = self._generate_default_analysis(transcript, agent_id)
                 else:
                     output = self._generate_default_analysis(transcript, agent_id)
 
