@@ -11,6 +11,8 @@ interface TopCommandBarProps {
   threatLevel: ThreatLevel;
   micActive: boolean;
   sessionTimeLeft: number; // seconds
+  onUpdateDocument?: () => void;
+  isUpdatingDocument?: boolean;
 }
 
 function getThreatStyle(level: ThreatLevel) {
@@ -56,6 +58,8 @@ export default function TopCommandBar({
   threatLevel,
   micActive,
   sessionTimeLeft,
+  onUpdateDocument,
+  isUpdatingDocument,
 }: TopCommandBarProps) {
   const [utcTime, setUtcTime] = useState("");
   const [gearHovered, setGearHovered] = useState(false);
@@ -274,6 +278,61 @@ export default function TopCommandBar({
           flexShrink: 0,
         }}
       >
+        {/* Update Document Button */}
+        {onUpdateDocument && (
+          <button
+            onClick={onUpdateDocument}
+            disabled={isUpdatingDocument}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "4px 10px",
+              background: isUpdatingDocument ? "rgba(255,255,255,0.05)" : "transparent",
+              border: `1px solid ${isUpdatingDocument ? "#1E2D3D" : "#4A9EFF"}`,
+              borderRadius: "2px",
+              cursor: isUpdatingDocument ? "wait" : "pointer",
+              transition: "all 200ms ease",
+              opacity: isUpdatingDocument ? 0.7 : 1,
+            }}
+            onMouseEnter={e => {
+              if (!isUpdatingDocument) {
+                e.currentTarget.style.background = "rgba(74,158,255,0.1)";
+                e.currentTarget.style.boxShadow = "0 0 8px rgba(74,158,255,0.2)";
+              }
+            }}
+            onMouseLeave={e => {
+              if (!isUpdatingDocument) {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.boxShadow = "none";
+              }
+            }}
+          >
+            {isUpdatingDocument ? (
+              <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#4A9EFF", animation: "pulse 1.5s infinite" }} />
+            ) : (
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#4A9EFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            )}
+            <span
+              style={{
+                fontFamily: "'Barlow Condensed', sans-serif",
+                fontWeight: 600,
+                fontSize: "11px",
+                letterSpacing: "0.12em",
+                color: isUpdatingDocument ? "#8A9BB0" : "#4A9EFF",
+              }}
+            >
+              {isUpdatingDocument ? "UPDATING..." : "UPDATE DOCUMENT"}
+            </span>
+          </button>
+        )}
+
         {/* Mic Status */}
         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           <div

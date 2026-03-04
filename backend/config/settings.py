@@ -59,7 +59,7 @@ class Settings(BaseSettings):
 
     # Session config
     # MULTI-AGENT: changed default from 1 to 4 for 4-agent mode
-    max_agents_per_session: int = 4
+    max_agents_per_session: int = 5
     session_timeout_minutes: int = 45
     escalation_score_penalty: int = -8
 

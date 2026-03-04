@@ -8,6 +8,7 @@ COLLECTION_CRISIS_SESSIONS = "crisis_sessions"
 COLLECTION_AGENT_MEMORY = "agent_memory"
 COLLECTION_AGENT_SKILLS = "agent_skills"
 COLLECTION_SESSION_EVENTS = "session_events"
+COLLECTION_DOCUMENT_DRAFTS = "document_drafts"
 SUBCOLLECTION_EVENTS = "events"
 
 # ── SESSION STATUSES ─────────────────────────────────────────────────────
@@ -79,6 +80,10 @@ EVENT_CHAIRMAN_SPOKE = "chairman_spoke"
 EVENT_RESOLUTION_MODE_START = "resolution_mode_start"
 EVENT_AGENT_FINAL_POSITION = "agent_final_position"
 EVENT_SESSION_RESOLVED = "session_resolved"
+EVENT_DOCUMENT_UPDATED = "document_updated"
+EVENT_DEADLINE_RISK_FLAGGED = "deadline_risk_flagged"
+EVENT_SESSION_FINALIZING = "session_finalizing"
+EVENT_SESSION_PACKAGE_READY = "session_package_ready"
 
 # ── VOICE POOL (ElevenLabs voice IDs) ───────────────────────────────────
 # These IDs map to default/public voices and are used as stable fallbacks.

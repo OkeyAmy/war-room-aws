@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { createSession, pollUntilReady, type AssemblyLogEntry } from "@/lib/api";
+import { createSession, pollUntilReady, uploadIntakeDocuments, type AssemblyLogEntry } from "@/lib/api";
 import { saveSession } from "@/lib/sessionStore";
 
 // ─── Assembly Loading Screen ────────────────────────────────────────────────
@@ -81,6 +81,10 @@ export default function LandingPage() {
   const [assemblyLog, setAssemblyLog] = useState<AssemblyLogEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  // Intake state
+  const [files, setFiles] = useState<File[]>([]);
+  const [isFileDragging, setIsFileDragging] = useState(false);
+
   const router = useRouter();
 
   // Reveal chairman options once crisis input is substantial
@@ -110,6 +114,12 @@ export default function LandingPage() {
         token: session.chairman_token,
         chairmanName: chairmanName.trim() || "DIRECTOR",
       });
+
+      // 3. Process Intake documents if provided (BEFORE polling scenario)
+      if (files.length > 0) {
+        setAssemblyLog([{ line: "Processing uploaded intelligence documents:", value: `${files.length} files`, status: "complete" }]);
+        await uploadIntakeDocuments(session.session_id, session.chairman_token, files);
+      }
 
       // 3. Poll until scenario_ready, updating the log live
       await pollUntilReady(
@@ -152,6 +162,48 @@ export default function LandingPage() {
             />
             <div className="absolute bottom-4 right-4 text-[10px] font-mono text-blue-900 uppercase tracking-widest pointer-events-none">
               Terminal Input Active
+            </div>
+          </div>
+
+          {/* File Upload Area */}
+          <div
+            className={`relative border-2 border-dashed rounded-lg p-6 transition-all duration-300 ${isFileDragging ? "border-blue-500 bg-blue-500/10" : "border-[#1E2D3D] bg-[#0D1117]/50 hover:border-blue-500/30"
+              }`}
+            onDragOver={(e) => { e.preventDefault(); setIsFileDragging(true); }}
+            onDragLeave={() => setIsFileDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setIsFileDragging(false);
+              const dropped = Array.from(e.dataTransfer.files);
+              setFiles(prev => [...prev, ...dropped]);
+            }}
+          >
+            <input
+              type="file"
+              multiple
+              onChange={(e) => {
+                if (e.target.files) {
+                  setFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+                }
+              }}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+            <div className="flex flex-col items-center justify-center space-y-2 pointer-events-none">
+              <svg className="w-8 h-8 text-blue-500/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              <p className="text-xs font-mono text-blue-500/70 tracking-widest uppercase">
+                {files.length > 0 ? `${files.length} FILE(S) READY FOR INTAKE` : "DROP INTEL FILES OR CLICK TO UPLOAD"}
+              </p>
+              {files.length > 0 && (
+                <div className="flex flex-wrap gap-2 justify-center mt-2">
+                  {files.map((f, i) => (
+                    <span key={i} className="text-[10px] bg-blue-900/30 text-blue-300 px-2 py-1 rounded truncate max-w-[150px]">
+                      {f.name}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

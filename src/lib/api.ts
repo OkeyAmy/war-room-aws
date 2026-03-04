@@ -11,6 +11,41 @@ const API_BASE =
 
 // ── Types (mirror backend Pydantic models) ────────────────────────────────────
 
+export interface DocumentSummary {
+    doc_id: string;
+    title: string;
+    owner_agent_id: string;
+    deadline_hours: number;
+    template_type: string;
+    legal_framework: string;
+    sections_drafted: number;
+    status: "pending" | "in_progress" | "finalized" | "draft_fallback";
+}
+
+export interface DocumentDetail extends DocumentSummary {
+    draft_sections: Record<string, any>;
+    finalized_content: string | null;
+}
+
+export interface DocumentListResponse {
+    session_id: string;
+    documents: DocumentSummary[];
+    deadline_risks: any[];
+}
+
+export interface FinalizeResponse {
+    session_id: string;
+    finalized_count: number;
+    documents: any[];
+}
+
+export interface IntakeResponse {
+    session_id: string;
+    files_processed: number;
+    extracted_chars: number;
+    message: string;
+}
+
 export interface CreateSessionResponse {
     session_id: string;
     chairman_token: string;
@@ -163,6 +198,75 @@ export async function deleteSession(
         headers: authHeaders(token),
     });
     return handle(res);
+}
+
+// ── Document & Intake routes ───────────────────────────────────────────────────
+
+/**
+ * GET /api/sessions/{session_id}/documents
+ * List all required documents and their draft status.
+ */
+export async function getDocuments(
+    sessionId: string,
+    token: string
+): Promise<DocumentListResponse> {
+    const res = await fetch(`${API_BASE}/api/sessions/${sessionId}/documents`, {
+        headers: authHeaders(token),
+    });
+    return handle<DocumentListResponse>(res);
+}
+
+/**
+ * GET /api/sessions/{session_id}/documents/{doc_id}
+ * Get full document details, including draft sections.
+ */
+export async function getDocument(
+    sessionId: string,
+    token: string,
+    docId: string
+): Promise<DocumentDetail> {
+    const res = await fetch(`${API_BASE}/api/sessions/${sessionId}/documents/${docId}`, {
+        headers: authHeaders(token),
+    });
+    return handle<DocumentDetail>(res);
+}
+
+/**
+ * POST /api/sessions/{session_id}/documents/finalize
+ * Manually trigger document finalization mid-session.
+ */
+export async function finalizeDocuments(
+    sessionId: string,
+    token: string
+): Promise<FinalizeResponse> {
+    const res = await fetch(`${API_BASE}/api/sessions/${sessionId}/documents/finalize`, {
+        method: "POST",
+        headers: authHeaders(token),
+    });
+    return handle<FinalizeResponse>(res);
+}
+
+/**
+ * POST /api/sessions/{session_id}/intake
+ * Upload files for the intake engine to process before scenario generation.
+ */
+export async function uploadIntakeDocuments(
+    sessionId: string,
+    token: string,
+    files: File[]
+): Promise<IntakeResponse> {
+    const formData = new FormData();
+    files.forEach((file) => formData.append("files", file));
+
+    const res = await fetch(`${API_BASE}/api/sessions/${sessionId}/intake`, {
+        method: "POST",
+        headers: {
+            // Do NOT set Content-Type here; browser sets it with multipart boundary
+            Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+    });
+    return handle<IntakeResponse>(res);
 }
 
 // ── Scenario routes ────────────────────────────────────────────────────────────

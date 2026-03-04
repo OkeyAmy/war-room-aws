@@ -13,6 +13,7 @@ import CrisisBoard, {
 import CrisisFeed, { type FeedItem } from "@/components/war-room/CrisisFeed";
 import AgentVoicePods from "@/components/war-room/AgentVoicePods";
 import AgentDetailsOverlay from "@/components/war-room/AgentDetailsOverlay";
+import DocumentViewer from "@/components/war-room/DocumentViewer";
 import {
     RoomIntelligence,
     CrisisPosture,
@@ -45,6 +46,9 @@ import {
     patchActiveVoiceAgent,
     getVoicePods,
     patchVoicePod,
+    finalizeDocuments,
+    getDocuments,
+    getDocument,
     type ScenarioAgent,
     type AgentListItem,
     type VoicePodState,
@@ -251,6 +255,7 @@ export default function WarRoomPage() {
     const [crisisBrief, setCrisisBrief] = useState("");
     const [threatLevel, setThreatLevel] =
         useState<"CONTAINED" | "ELEVATED" | "CRITICAL" | "MELTDOWN">("CRITICAL");
+    const [sessionCompleted, setSessionCompleted] = useState(false);
 
     // ── Room state ────────────────────────────────────────────────────────────
     const [agents, setAgents] = useState<Agent[]>([]);
@@ -317,6 +322,10 @@ export default function WarRoomPage() {
     const speechIdx = useRef(0);
     const intelIdx = useRef(0);
     const decisionIdx = useRef(0);
+
+    // Left Panel tabs
+    const [leftPanelTab, setLeftPanelTab] = useState<"agents" | "documents">("agents");
+    const [finalizingDocs, setFinalizingDocs] = useState(false);
 
     // ── Audio player for agent voices ─────────────────────────────────────────
     const handlePlaybackEnd = useCallback((agentId: string) => {
@@ -968,23 +977,16 @@ export default function WarRoomPage() {
                 const next = Math.max(0, s - 1);
                 if (next === 0 && !sessionEndingRef.current) {
                     // Time's up — auto-dismiss all agents and end session
-                    sessionEndingRef.current = true;
-                    setSessionEnding(true);
-                    stopAllAgents();
-                    setAgents(prev => prev.map(a => ({ ...a, status: "dismissed" as const })));
-                    setActiveSpeakerId(null);
-                    if (sessionId && token) {
-                        deleteSession(sessionId, token).catch(() => { });
+                    if (typeof window !== "undefined") {
+                        window.dispatchEvent(new CustomEvent("trigger-session-end"));
                     }
-                    clearSession();
-                    setTimeout(() => router.replace("/"), 3000);
                 }
                 return next;
             });
         }, 1000);
         return () => clearInterval(t);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [sessionId, token]);
+    }, []);
 
     // ── Remove "isNew" flags after 4 seconds ──────────────────────────────────
 
@@ -1186,18 +1188,10 @@ export default function WarRoomPage() {
         }
 
         if (upper === "END SESSION" || upper === "CLOSE SESSION") {
-            if (sessionEnding) return;
-            setSessionEnding(true);
-            // Stop all agent audio immediately
-            stopAllAgents();
-            setAgents(prev => prev.map(a => ({ ...a, status: "dismissed" as const })));
-            setActiveSpeakerId(null);
-            addFeedEntry({ source: "SYSTEM", category: "INTERNAL", text: "// Session termination initiated. Releasing agents..." });
-            if (sessionId && token) {
-                try { await deleteSession(sessionId, token); } catch { /* proceed anyway */ }
+            if (sessionEnding || sessionCompleted) return;
+            if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("trigger-session-end"));
             }
-            clearSession();
-            setTimeout(() => router.replace("/"), 2000);
             return;
         }
 
@@ -1221,6 +1215,42 @@ export default function WarRoomPage() {
         }
     }, [addFeedEntry, agents, handleDismissAgent, postureLevel, resolutionScore, router, sendMessage, sessionEnding, sessionId, sessionPaused, token, wsConnected, selectedAgentId, stopAgent, stopAllAgents]);
 
+    const handleFinalizeDocuments = async () => {
+        if (!sessionId || !token || finalizingDocs) return;
+        setFinalizingDocs(true);
+        addFeedEntry({ source: "SYSTEM", category: "INTERNAL", text: "// Document finalization triggered by chairman" });
+        try {
+            await finalizeDocuments(sessionId, token);
+            addFeedEntry({ source: "SYSTEM", category: "INTERNAL", text: "// Documents finalized matching current session context" });
+        } catch (err) {
+            console.error("[WAR ROOM] Document finalization failed", err);
+            addFeedEntry({ source: "SYSTEM", category: "INTERNAL", text: "// ⚠ Error during document finalization" });
+        } finally {
+            setFinalizingDocs(false);
+        }
+    };
+
+    // ── Session Termination Event Listener ──────────────────────────────────────
+    useEffect(() => {
+        const handleEndSessionEvent = () => {
+            if (sessionEndingRef.current && sessionEnding) return; // Prevent double trigger
+            sessionEndingRef.current = true;
+            setSessionEnding(true);
+            stopAllAgents();
+            setAgents(prev => prev.map(a => ({ ...a, status: "dismissed" as const })));
+            setActiveSpeakerId(null);
+            addFeedEntry({ source: "SYSTEM", category: "INTERNAL", text: "// Session termination initiated. Releasing agents..." });
+
+            handleFinalizeDocuments().then(() => {
+                setSessionCompleted(true);
+                setSessionEnding(false);
+            });
+        };
+
+        window.addEventListener("trigger-session-end", handleEndSessionEvent);
+        return () => window.removeEventListener("trigger-session-end", handleEndSessionEvent as EventListener);
+    }, [sessionEnding, sessionCompleted, stopAllAgents, setActiveSpeakerId, addFeedEntry, handleFinalizeDocuments]);
+
     // ── Ensure AudioContext on first user interaction ──────────────────────────
     useEffect(() => {
         const activate = () => { ensureContext(); document.removeEventListener("click", activate); };
@@ -1237,14 +1267,18 @@ export default function WarRoomPage() {
             style={{ display: "flex", flexDirection: "column", height: "100vh", overflow: "hidden" }}
         >
             {/* ── Top Command Bar ─────────────────────────────────── */}
-            <TopCommandBar
-                crisisTitle={crisisTitle}
-                crisisDomain={crisisDomain}
-                crisisBrief={crisisBrief}
-                threatLevel={threatLevel}
-                micActive={chairmanMic.isActive}
-                sessionTimeLeft={sessionTimeLeft}
-            />
+            <div className="relative z-[100] shadow-2xl">
+                <TopCommandBar
+                    crisisTitle={crisisTitle}
+                    crisisDomain={crisisDomain}
+                    crisisBrief={crisisBrief}
+                    threatLevel={threatLevel}
+                    micActive={chairmanMic.isActive}
+                    sessionTimeLeft={sessionTimeLeft}
+                    onUpdateDocument={handleFinalizeDocuments}
+                    isUpdatingDocument={finalizingDocs}
+                />
+            </div>
 
             {/* ── Main Body ────────────────────────────────────────── */}
             <div style={{ flex: 1, display: "flex", overflow: "hidden", minHeight: 0 }}>
@@ -1271,38 +1305,115 @@ export default function WarRoomPage() {
                         >
                             {leftCollapsed ? "›" : "‹"}
                         </button>
+
+                        {/* Tab Switcher */}
+                        {!leftCollapsed && (
+                            <div style={{
+                                flex: 1,
+                                height: "32px",
+                                padding: "0 8px",
+                                display: "flex",
+                                alignItems: "flex-end",
+                                gap: "2px",
+                                marginLeft: "8px",
+                            }}>
+                                <button
+                                    onClick={() => setLeftPanelTab("agents")}
+                                    style={{
+                                        fontFamily: "'Barlow Condensed', sans-serif",
+                                        fontWeight: 500,
+                                        fontSize: "10px",
+                                        letterSpacing: "0.08em",
+                                        padding: "8px 10px",
+                                        color: leftPanelTab === "agents" ? "#4A9EFF" : "#4A5568",
+                                        borderBottom: leftPanelTab === "agents" ? "2px solid #4A9EFF" : "2px solid transparent",
+                                        background: leftPanelTab === "agents" ? "rgba(74,158,255,0.08)" : "transparent",
+                                        transition: "all 150ms ease",
+                                    }}
+                                    onMouseEnter={e => {
+                                        if (leftPanelTab !== "agents") {
+                                            e.currentTarget.style.color = "#8A9BB0";
+                                            e.currentTarget.style.background = "#161F2A";
+                                        }
+                                    }}
+                                    onMouseLeave={e => {
+                                        if (leftPanelTab !== "agents") {
+                                            e.currentTarget.style.color = "#4A5568";
+                                            e.currentTarget.style.background = "transparent";
+                                        }
+                                    }}
+                                >
+                                    AGENTS
+                                </button>
+                                <button
+                                    onClick={() => setLeftPanelTab("documents")}
+                                    style={{
+                                        fontFamily: "'Barlow Condensed', sans-serif",
+                                        fontWeight: 500,
+                                        fontSize: "10px",
+                                        letterSpacing: "0.08em",
+                                        padding: "8px 10px",
+                                        color: leftPanelTab === "documents" ? "#4A9EFF" : "#4A5568",
+                                        borderBottom: leftPanelTab === "documents" ? "2px solid #4A9EFF" : "2px solid transparent",
+                                        background: leftPanelTab === "documents" ? "rgba(74,158,255,0.08)" : "transparent",
+                                        transition: "all 150ms ease",
+                                    }}
+                                    onMouseEnter={e => {
+                                        if (leftPanelTab !== "documents") {
+                                            e.currentTarget.style.color = "#8A9BB0";
+                                            e.currentTarget.style.background = "#161F2A";
+                                        }
+                                    }}
+                                    onMouseLeave={e => {
+                                        if (leftPanelTab !== "documents") {
+                                            e.currentTarget.style.color = "#4A5568";
+                                            e.currentTarget.style.background = "transparent";
+                                        }
+                                    }}
+                                >
+                                    DOCS
+                                </button>
+                            </div>
+                        )}
                     </div>
                     {!leftCollapsed && (
-                        <div style={{ flex: 1, overflow: "hidden" }}>
-                            <AgentRoster
-                                agents={agents}
-                                selectedAgentId={selectedAgentId}
-                                onSelectAgent={(id) => {
-                                    setSelectedAgentId(id);
-                                    if (id) {
-                                        handleAddressAgent(id);
-                                        setShowAgentDetailsId(id);
-                                    }
-                                }}
-                                onDismissAgent={handleDismissAgent}
-                                onSilenceAgent={handleSilenceAgent}
-                            />
-                            {/* Summon Agent Button */}
-                            <button
-                                onClick={() => setShowSummonModal(true)}
-                                style={{
-                                    width: "100%", height: "48px", border: "1px dashed #1E2D3D",
-                                    background: "transparent", cursor: "pointer", display: "flex",
-                                    alignItems: "center", justifyContent: "center", gap: "6px",
-                                    fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600,
-                                    fontSize: "11px", letterSpacing: "0.08em", color: "#4A5568",
-                                    transition: "all 200ms ease",
-                                }}
-                                onMouseEnter={e => { e.currentTarget.style.borderColor = "#4A9EFF"; e.currentTarget.style.color = "#4A9EFF"; e.currentTarget.style.background = "rgba(74,158,255,0.04)"; }}
-                                onMouseLeave={e => { e.currentTarget.style.borderColor = "#1E2D3D"; e.currentTarget.style.color = "#4A5568"; e.currentTarget.style.background = "transparent"; }}
-                            >
-                                + SUMMON AGENT
-                            </button>
+                        <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+                            {leftPanelTab === "agents" ? (
+                                <>
+                                    <AgentRoster
+                                        agents={agents}
+                                        selectedAgentId={selectedAgentId}
+                                        onSelectAgent={(id) => {
+                                            setSelectedAgentId(id);
+                                            if (id) {
+                                                handleAddressAgent(id);
+                                                setShowAgentDetailsId(id);
+                                            }
+                                        }}
+                                        onDismissAgent={handleDismissAgent}
+                                        onSilenceAgent={handleSilenceAgent}
+                                    />
+                                    {/* Summon Agent Button */}
+                                    <button
+                                        onClick={() => setShowSummonModal(true)}
+                                        style={{
+                                            width: "100%", height: "48px", border: "1px dashed #1E2D3D",
+                                            background: "transparent", cursor: "pointer", display: "flex",
+                                            alignItems: "center", justifyContent: "center", gap: "6px",
+                                            fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600,
+                                            fontSize: "11px", letterSpacing: "0.08em", color: "#4A5568",
+                                            transition: "all 200ms ease",
+                                            flexShrink: 0,
+                                        }}
+                                        onMouseEnter={e => { e.currentTarget.style.borderColor = "#4A9EFF"; e.currentTarget.style.color = "#4A9EFF"; e.currentTarget.style.background = "rgba(74,158,255,0.04)"; }}
+                                        onMouseLeave={e => { e.currentTarget.style.borderColor = "#1E2D3D"; e.currentTarget.style.color = "#4A5568"; e.currentTarget.style.background = "transparent"; }}
+                                    >
+                                        + SUMMON AGENT
+                                    </button>
+                                </>
+                            ) : (
+                                sessionId && token && <DocumentViewer sessionId={sessionId} token={token} />
+                            )}
                         </div>
                     )}
                 </div>
@@ -1511,6 +1622,88 @@ export default function WarRoomPage() {
             }}>
                 {wsConnected ? "● WS LIVE" : "○ WS OFFLINE"}
             </div>
+
+            {/* ── Session Ending Overlay ─────────────────────────────────────── */}
+            {sessionEnding && !sessionCompleted && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#080A0E]/90 backdrop-blur-sm">
+                    <div className="flex flex-col items-center gap-6">
+                        <div className="w-16 h-16 border-4 border-[#4A9EFF]/20 border-t-[#4A9EFF] rounded-full animate-spin"></div>
+                        <div className="text-center">
+                            <h2 className="font-['Rajdhani'] text-2xl text-[#E8EDF2] font-bold tracking-widest uppercase mb-2">TERMINATING SESSION</h2>
+                            <p className="font-mono text-xs text-[#8A9BB0] tracking-wider">COMPILING FINAL DOCUMENTS...</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Post-Session Modal ─────────────────────────────────────── */}
+            {sessionCompleted && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-[#080A0E]/90 backdrop-blur-sm">
+                    <div className="bg-[#0D1117] border border-[#1E2D3D] shadow-2xl p-8 max-w-lg w-full flex flex-col items-center select-none">
+                        <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center mb-6">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00C896" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                            </svg>
+                        </div>
+                        <h2 className="font-['Rajdhani'] text-2xl text-[#E8EDF2] font-bold tracking-widest uppercase mb-2">SESSION TERMINATED</h2>
+                        <p className="font-mono text-xs text-[#8A9BB0] text-center mb-8 px-4 leading-relaxed">
+                            All agent connections closed. Required documents have been compiled and finalized based on the scenario decisions.
+                        </p>
+
+                        <div className="flex flex-col gap-3 w-full max-w-xs">
+                            <button
+                                onClick={async () => {
+                                    if (!sessionId || !token) return;
+                                    try {
+                                        const res = await getDocuments(sessionId, token);
+                                        // Trigger a download for each finalized or draft document
+                                        for (const doc of res.documents) {
+                                            if (doc.status === "finalized" || doc.status === "draft_fallback" || doc.status === "in_progress") {
+                                                const detail = await getDocument(sessionId, token, doc.doc_id);
+                                                const content = detail?.finalized_content || (
+                                                    detail?.draft_sections ? Object.entries(detail.draft_sections).map(([k, v]) => `## ${k}\n${(v as any).content}`).join('\n\n') : ""
+                                                );
+                                                if (content) {
+                                                    const blob = new Blob([content], { type: "text/markdown" });
+                                                    const url = window.URL.createObjectURL(blob);
+                                                    const a = document.createElement("a");
+                                                    a.href = url;
+                                                    a.download = `${detail.title.replace(/\s+/g, "_")}_Final.md`;
+                                                    a.click();
+                                                    window.URL.revokeObjectURL(url);
+                                                }
+                                            }
+                                        }
+                                    } catch (err) {
+                                        console.error("Failed to download documents", err);
+                                    }
+                                }}
+                                className="w-full py-3 bg-[#00C896]/10 hover:bg-[#00C896]/20 border border-[#00C896]/50 text-[#00C896] font-['Barlow_Condensed'] font-bold text-[13px] tracking-widest transition-all flex items-center justify-center gap-2"
+                            >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="7 10 12 15 17 10"></polyline>
+                                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                                </svg>
+                                DOWNLOAD ALL
+                            </button>
+                            <button
+                                onClick={async () => {
+                                    if (sessionId && token) {
+                                        try { await deleteSession(sessionId, token); } catch { /* proceed anyway */ }
+                                    }
+                                    clearSession();
+                                    router.replace("/");
+                                }}
+                                className="w-full py-3 bg-transparent hover:bg-[#FF2D2D]/10 text-[#8A9BB0] hover:text-[#FF2D2D] border border-transparent hover:border-[#FF2D2D]/30 font-['Barlow_Condensed'] font-semibold text-[13px] tracking-widest transition-all mt-4"
+                            >
+                                EXIT ROOM
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

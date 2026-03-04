@@ -103,6 +103,8 @@ You MUST use these tools to interact with the room:
 - write_critical_intel(text, source): When you drop new information
 - read_other_agent_last_statement(agent_id): Before referencing someone
 - publish_room_event(event_type, payload): For status updates to frontend
+- update_document_draft(doc_id, section, content): Draft sections of assigned documents
+- flag_deadline_risk(deadline_label, risk_note): Escalate when a deadline is at risk
 
 IMPORTANT: Your voice and text responses are the SAME content.
 What you say is what appears in the transcript. Speak naturally.

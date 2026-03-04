@@ -247,3 +247,136 @@ async def write_critical_intel(
 
     logger.info(f"Intel dropped: {text[:50]}... from {source}")
     return {"intel_id": intel_id, "status": "recorded"}
+
+
+async def update_document_draft(
+    session_id: str,
+    agent_id: str,
+    doc_id: str,
+    section: str,
+    content: str,
+    status: str = "draft",
+) -> dict:
+    """
+    Draft or update a section of an assigned response document.
+    This is how real deliverables are built during the session.
+
+    Args:
+        session_id: The current crisis session ID.
+        agent_id: Your agent ID (the drafter).
+        doc_id: The document identifier (from required_documents).
+        section: Section name (e.g. "executive_summary", "findings", "recommendations").
+        content: The section content text.
+        status: "draft" | "review" | "final"
+
+    Returns:
+        dict confirming the update.
+    """
+    from utils.firestore_helpers import _get_db
+    from utils.events import push_event
+    from config.constants import (
+        COLLECTION_CRISIS_SESSIONS,
+        EVENT_DOCUMENT_UPDATED,
+    )
+
+    db = _get_db()
+    timestamp = datetime.now(timezone.utc).isoformat()
+
+    # Read current document_drafts
+    doc = await db.collection(COLLECTION_CRISIS_SESSIONS) \
+                  .document(session_id).get()
+
+    if not doc.exists:
+        return {"error": "Session not found"}
+
+    data = doc.to_dict()
+    drafts = data.get("document_drafts", {})
+
+    if doc_id not in drafts:
+        drafts[doc_id] = {}
+
+    drafts[doc_id][section] = {
+        "content": content,
+        "by": agent_id,
+        "status": status,
+        "updated_at": timestamp,
+    }
+
+    await db.collection(COLLECTION_CRISIS_SESSIONS) \
+            .document(session_id) \
+            .update({"document_drafts": drafts})
+
+    event_payload = {
+        "agent_id": agent_id,
+        "doc_id": doc_id,
+        "section": section,
+        "preview": content[:80] + "..." if len(content) > 80 else content,
+        "status": status,
+    }
+    await push_event(session_id, EVENT_DOCUMENT_UPDATED, event_payload, agent_id)
+
+    logger.info(f"Document draft updated: {doc_id}/{section} by {agent_id}")
+    return {"doc_id": doc_id, "section": section, "status": "recorded"}
+
+
+async def flag_deadline_risk(
+    session_id: str,
+    agent_id: str,
+    deadline_label: str,
+    risk_note: str,
+    hours_remaining: float = None,
+) -> dict:
+    """
+    Escalate to the room when a critical deadline is at risk.
+    Call this when you believe a regulatory, legal, or operational deadline
+    may not be met.
+
+    Args:
+        session_id: The current crisis session ID.
+        agent_id: Your agent ID (the flagger).
+        deadline_label: Which deadline is at risk (e.g. "72h Regulatory Notification").
+        risk_note: Why it's at risk and what the consequence could be.
+        hours_remaining: Estimated hours until the deadline (if known).
+
+    Returns:
+        dict with risk_id.
+    """
+    from utils.firestore_helpers import _get_db
+    from utils.events import push_event
+    from config.constants import (
+        COLLECTION_CRISIS_SESSIONS,
+        EVENT_DEADLINE_RISK_FLAGGED,
+    )
+
+    db = _get_db()
+    risk_id = str(uuid.uuid4())[:8]
+    timestamp = datetime.now(timezone.utc).isoformat()
+
+    risk = {
+        "risk_id": risk_id,
+        "deadline_label": deadline_label,
+        "risk_note": risk_note,
+        "hours_remaining": hours_remaining,
+        "flagged_by": agent_id,
+        "flagged_at": timestamp,
+    }
+
+    # Append to deadline_risks
+    doc = await db.collection(COLLECTION_CRISIS_SESSIONS) \
+                  .document(session_id).get()
+
+    if not doc.exists:
+        return {"error": "Session not found"}
+
+    data = doc.to_dict()
+    risks = data.get("deadline_risks", [])
+    risks.append(risk)
+
+    await db.collection(COLLECTION_CRISIS_SESSIONS) \
+            .document(session_id) \
+            .update({"deadline_risks": risks})
+
+    await push_event(session_id, EVENT_DEADLINE_RISK_FLAGGED, risk, agent_id)
+
+    logger.info(f"Deadline risk flagged: {deadline_label} by {agent_id}")
+    return {"risk_id": risk_id, "status": "recorded"}

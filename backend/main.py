@@ -28,6 +28,7 @@ from gateway.posture_routes import router as posture_router
 from gateway.score_routes import router as score_router
 from gateway.world_routes import router as world_router
 from gateway.resolution_routes import router as resolution_router
+from gateway.document_routes import router as document_router
 from utils.auth import get_chairman_token, validate_chairman_token
 from utils.pydantic_models import (
     CreateSessionRequest,
@@ -111,6 +112,7 @@ app.include_router(posture_router)
 app.include_router(score_router)
 app.include_router(world_router)
 app.include_router(resolution_router)
+app.include_router(document_router)
 
 
 # ── HELPER: compute timer ────────────────────────────────────────────────
@@ -424,6 +426,14 @@ async def delete_session(
     _observer_agents.pop(session_id, None)
     _world_agents.pop(session_id, None)
 
+    # Finalize documents before closing
+    try:
+        from agents.document_engine import finalize_all_documents
+        finalized = await finalize_all_documents(session_id)
+        logger.info(f"Finalized {len(finalized)} documents for session {session_id}")
+    except Exception as e:
+        logger.warning(f"Document finalization skipped for {session_id}: {e}")
+
     return DeleteSessionResponse(
         session_id=session_id,
         closed_at=closed_at,
@@ -590,6 +600,17 @@ async def health_check():
         except Exception as e:
             return {"status": "fail", "message": str(e)}
 
+    async def check_document_engine():
+        try:
+            from agents.document_engine import finalize_document
+            from agents.intake import process_uploaded_documents
+            return {
+                "status": "pass",
+                "message": "Document engine and intake modules loaded",
+            }
+        except Exception as e:
+            return {"status": "fail", "message": str(e)}
+
     results = await asyncio.gather(
         check_gemini_text(),
         check_database(),
@@ -601,6 +622,7 @@ async def health_check():
         check_skill_generator(),
         check_voice(),
         check_gateway(),
+        check_document_engine(),
         return_exceptions=True,
     )
 
@@ -615,6 +637,7 @@ async def health_check():
         "skill_generator",
         "voice_system",
         "gateway_websocket",
+        "document_engine",
     ]
 
     for name, result in zip(check_names, results):
@@ -637,7 +660,7 @@ async def health_check():
     return {
         "status": overall,
         "service": "war-room-backend",
-        "version": "1.0.0",
+        "version": "2.0.0",
         "environment": env,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "summary": {

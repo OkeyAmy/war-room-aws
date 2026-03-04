@@ -249,6 +249,11 @@ async def bootstrap_session(
             })
     update_data["critical_intel"] = critical_intel
 
+    # Handle required documents (v2.0 — optional)
+    update_data["required_documents"] = scenario.get("required_documents", [])
+    update_data["document_drafts"] = {}
+    update_data["deadline_risks"] = []
+
     await db.collection(COLLECTION_CRISIS_SESSIONS) \
             .document(session_id).update(update_data)
 

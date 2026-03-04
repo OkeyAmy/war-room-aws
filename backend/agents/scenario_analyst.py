@@ -24,6 +24,8 @@ that will be used to initialize the entire crisis team.
 
 CRISIS INPUT: {crisis_input}
 
+{uploaded_context_section}
+
 You must output a valid JSON object with this exact structure:
 {{
   "crisis_title": "Short dramatic title (max 8 words)",
@@ -42,7 +44,14 @@ You must output a valid JSON object with this exact structure:
       "personality_traits": ["trait1", "trait2", "trait3"],
       "conflict_with": ["role_key_of_agent_they_clash_with"],
       "voice_style": "authoritative|warm|clipped|measured|urgent|calm|aggressive",
-      "identity_color": "#hexcode that fits their personality"
+      "identity_color": "#hexcode that fits their personality",
+      "expertise_domains": ["domain1", "domain2"],
+      "communication_style": "How this person speaks — cadence, vocabulary, mannerisms",
+      "hidden_tension": "Internal conflict that shapes their reasoning without them saying it",
+      "emotional_temperature": "Their urgency level and emotional tone",
+      "initial_position": "Their opening stance on the crisis",
+      "blind_spot": "What they consistently underweight or miss",
+      "documents_responsible": ["Document Name they should own"]
     }}
   ],
   "initial_intel": [
@@ -55,6 +64,16 @@ You must output a valid JSON object with this exact structure:
     {{ "delay_minutes": 5, "event_text": "...", "type": "media|legal|internal|social|operational" }},
     {{ "delay_minutes": 10, "event_text": "...", "type": "..." }},
     {{ "delay_minutes": 18, "event_text": "...", "type": "..." }}
+  ],
+  "required_documents": [
+    {{
+      "doc_id": "snake_case_identifier",
+      "title": "Document Title",
+      "owner_agent_id": "role_key of responsible agent",
+      "deadline_hours": 72,
+      "template_type": "regulatory_notification|executive_briefing|technical_report|customer_notification|insurance_report",
+      "legal_framework": "specific regulation or standard (if applicable)"
+    }}
   ]
 }}
 
@@ -65,6 +84,10 @@ Rules:
 - At least 2 agents must have conflict_with entries pointing at each other.
 - escalation_schedule must have exactly 3 events spaced across the session.
 - voice_style guides which ElevenLabs voices to assign. Each agent MUST have a different voice_style.
+- Each agent must have expertise_domains, communication_style, hidden_tension,
+  emotional_temperature, initial_position, and blind_spot filled in.
+- Generate 2-4 required_documents — real deliverables that must be drafted during the session.
+  Each document should be owned by the agent with the most relevant expertise.
 - Each agent must be suitable for LiveKit multimodal runtime:
   - accepts both spoken and typed chairman input
   - handles interruptions naturally
@@ -76,6 +99,7 @@ Rules:
 async def run_scenario_analyst(
     crisis_input: str,
     session_id: str,
+    uploaded_context: str = "",
 ) -> dict:
     """
     Runs the Scenario Analyst agent ONCE.
@@ -84,11 +108,17 @@ async def run_scenario_analyst(
     Args:
         crisis_input: The raw crisis description from the chairman.
         session_id: The session being bootstrapped.
+        uploaded_context: Optional extracted text from uploaded documents.
 
     Returns:
         dict matching the ScenarioSpec schema.
     """
     settings = get_settings()
+
+    # Build uploaded context section for the prompt
+    uploaded_section = ""
+    if uploaded_context:
+        uploaded_section = f"UPLOADED DOCUMENT CONTEXT:\n{uploaded_context}"
 
     try:
         from google.adk.agents import LlmAgent
@@ -102,7 +132,8 @@ async def run_scenario_analyst(
             name="ScenarioAnalyst",
             model=settings.text_model,
             instruction=SCENARIO_ANALYST_INSTRUCTION.format(
-                crisis_input=crisis_input
+                crisis_input=crisis_input,
+                uploaded_context_section=uploaded_section,
             ),
             output_schema=ScenarioSpec,
         )
@@ -159,6 +190,7 @@ def _generate_mock_scenario(crisis_input: str, session_id: str) -> dict:
     Generate a mock scenario for local development/testing
     when ADK is not available.
     MULTI-AGENT: expanded from 1 agent to 4 independent agents.
+    v2.0: enriched agent profiles + required_documents.
     """
     return {
         "crisis_title": "Critical Systems Failure",
@@ -182,6 +214,13 @@ def _generate_mock_scenario(crisis_input: str, session_id: str) -> dict:
                 "conflict_with": ["ops"],
                 "voice_style": "authoritative",
                 "identity_color": "#3B82F6",
+                "expertise_domains": ["corporate law", "regulatory compliance", "data protection"],
+                "communication_style": "Precise, measured, references statutes and precedents. Speaks in structured arguments.",
+                "hidden_tension": "Knows the compliance warning she flagged was dismissed by leadership. Feels partly responsible.",
+                "emotional_temperature": "Controlled urgency — maintains composure but pushes hard on deadlines.",
+                "initial_position": "Full disclosure within 72 hours per regulatory requirements.",
+                "blind_spot": "Underestimates the speed of media escalation. Focuses on legal timelines, ignores PR timelines.",
+                "documents_responsible": ["Regulatory Notification"],
             },
             {
                 "role_key": "pr",
@@ -194,6 +233,13 @@ def _generate_mock_scenario(crisis_input: str, session_id: str) -> dict:
                 "conflict_with": ["legal"],
                 "voice_style": "warm",
                 "identity_color": "#F59E0B",
+                "expertise_domains": ["crisis communications", "media relations", "reputation management"],
+                "communication_style": "Fast, narrative-driven, uses metaphors and media framing language.",
+                "hidden_tension": "Has a personal relationship with the Reuters reporter. Conflicted about using or containing it.",
+                "emotional_temperature": "High urgency — sees every minute without a statement as damage done.",
+                "initial_position": "Issue proactive holding statement within 2 hours.",
+                "blind_spot": "Prioritizes narrative speed over factual verification. May over-promise commitments.",
+                "documents_responsible": ["Customer Notification"],
             },
             {
                 "role_key": "engineer",
@@ -206,6 +252,13 @@ def _generate_mock_scenario(crisis_input: str, session_id: str) -> dict:
                 "conflict_with": ["finance"],
                 "voice_style": "clipped",
                 "identity_color": "#10B981",
+                "expertise_domains": ["systems architecture", "incident response", "infrastructure engineering"],
+                "communication_style": "Technical, data-driven, uses precise terminology. Avoids ambiguity.",
+                "hidden_tension": "The cost-cutting decision she approved directly caused this. Wrestling with disclosure.",
+                "emotional_temperature": "Measured on the surface, high internal stress about accountability.",
+                "initial_position": "Root cause must be identified before any public communication.",
+                "blind_spot": "Focuses on technical fix, underestimates human and organizational factors.",
+                "documents_responsible": ["Technical Incident Report"],
             },
             {
                 "role_key": "ops",
@@ -218,6 +271,13 @@ def _generate_mock_scenario(crisis_input: str, session_id: str) -> dict:
                 "conflict_with": ["legal"],
                 "voice_style": "urgent",
                 "identity_color": "#EF4444",
+                "expertise_domains": ["operations management", "supply chain", "business continuity"],
+                "communication_style": "Direct, action-oriented, uses military-style brevity. No padding.",
+                "hidden_tension": "Backup testing was his responsibility. Knows the gap but won't admit it unprompted.",
+                "emotional_temperature": "High — driven by operational losses mounting every minute.",
+                "initial_position": "Immediate failover to backup systems regardless of risk.",
+                "blind_spot": "Prioritizes speed over due process. Dismisses legal and PR concerns as bureaucracy.",
+                "documents_responsible": ["Executive Briefing"],
             },
         ],
         "initial_intel": [
@@ -234,5 +294,39 @@ def _generate_mock_scenario(crisis_input: str, session_id: str) -> dict:
             {"delay_minutes": 5, "event_text": "CNN Breaking: Major tech company confirms service outage.", "type": "media"},
             {"delay_minutes": 10, "event_text": "A class-action law firm issues a public statement of intent.", "type": "legal"},
             {"delay_minutes": 18, "event_text": "Internal whistleblower leaks email chain to The Verge.", "type": "internal"},
+        ],
+        "required_documents": [
+            {
+                "doc_id": "regulatory_notification",
+                "title": "Regulatory Notification",
+                "owner_agent_id": "legal",
+                "deadline_hours": 72,
+                "template_type": "regulatory_notification",
+                "legal_framework": "SEC Regulation FD / State Data Breach Notification Laws",
+            },
+            {
+                "doc_id": "customer_notification",
+                "title": "Customer Notification",
+                "owner_agent_id": "pr",
+                "deadline_hours": 24,
+                "template_type": "customer_notification",
+                "legal_framework": "",
+            },
+            {
+                "doc_id": "technical_incident_report",
+                "title": "Technical Incident Report",
+                "owner_agent_id": "engineer",
+                "deadline_hours": 48,
+                "template_type": "technical_report",
+                "legal_framework": "ISO 27001 Incident Reporting",
+            },
+            {
+                "doc_id": "executive_briefing",
+                "title": "Executive Briefing",
+                "owner_agent_id": "ops",
+                "deadline_hours": 12,
+                "template_type": "executive_briefing",
+                "legal_framework": "",
+            },
         ],
     }

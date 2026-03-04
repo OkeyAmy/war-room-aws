@@ -210,6 +210,7 @@ class CrisisAgent:
         from tools.crisis_board_tools import (
             read_crisis_board, write_agreed_decision,
             write_open_conflict, write_critical_intel,
+            update_document_draft, flag_deadline_risk,
         )
         from tools.memory_tools import read_my_private_memory, write_my_private_memory
         from tools.event_tools import publish_room_event
@@ -256,11 +257,20 @@ class CrisisAgent:
             """Publish an event to the room."""
             return await publish_room_event(sid, aid, event_type, payload)
 
+        async def _update_document_draft(doc_id: str, section: str, content: str, status: str = "draft") -> dict:
+            """Draft or update a section of an assigned response document."""
+            return await update_document_draft(sid, aid, doc_id, section, content, status)
+
+        async def _flag_deadline_risk(deadline_label: str, risk_note: str, hours_remaining: float = None) -> dict:
+            """Escalate when a critical deadline is at risk."""
+            return await flag_deadline_risk(sid, aid, deadline_label, risk_note, hours_remaining)
+
         return [
             _read_crisis_board, _write_agreed_decision, _write_open_conflict,
             _write_critical_intel, _read_other_agent_last_statement,
             _update_my_trust_score, _publish_room_event,
             _read_my_private_memory, _write_my_private_memory,
+            _update_document_draft, _flag_deadline_risk,
         ]
 
     # ── Gemini Live Session Setup ─────────────────────────────────────
