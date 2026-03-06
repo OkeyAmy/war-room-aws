@@ -50,6 +50,34 @@ WAR ROOM relies heavily on **Event-Driven Architecture (EDA)** paired with **Web
 
 ---
 
+## 🤖 Meet Your AI Crisis Team (What the Agents Do)
+
+WAR ROOM is powered by a team of specialized AI agents that act as your advisors during a crisis. Think of them as experts sitting around a table, waiting for your commands. Here is how they work together:
+
+### 1. The Scenario Analyst (The Architect)
+
+When you start a new session, the **Scenario Analyst** goes to work first. It acts like a casting director for the crisis. Based on the scenario, it decides exactly *which* experts need to be in the room.
+
+For example, if there is a massive data breach, it might decide: "We need a Legal Expert to handle lawsuits, a Chief Marketing Officer (CMO) for public relations, and an Engineering Lead to fix the servers." It then automatically creates these specific "sub-agents," giving each one a unique name, a specific role, and special skills to help you navigate the crisis.
+
+### 2. The Specialist Advisors (Your War Council)
+
+These are the sub-agents created by the Scenario Analyst (like the Legal, PR, or Military agents). Each specialist acts independently:
+
+* **They listen** to what you (the Chairman) say and what the other agents are discussing.
+* **They think** about the crisis entirely from their professional point of view. For instance, the Legal agent will always worry about liability, while the PR agent will obsess over the company's public image.
+* **They take action** by speaking up, debating with each other, suggesting solutions, or updating the shared "Crisis Board" to assist you.
+
+### 3. The World Agent (The Game Master)
+
+While you and your advisors are trying to solve the initial problem, the **World Agent** acts as the unpredictable outside world. It watches the clock and periodically injects new twists—like "Breaking News: The company's stock price just crashed" or "A new whistleblower has come forward." This keeps the pressure on and forces your team to constantly adapt.
+
+### 4. The Observer Agent (The Scorekeeper)
+
+The **Observer Agent** quietly watches the entire conversation from the background. It evaluates how well you and your team are handling the crisis. It scores metrics like "public trust" or "company stability" based on your decisions, making sure there are real consequences for how you manage the situation.
+
+---
+
 ## 📡 Frontend-Backend Interaction & Data Flow
 
 Communication between the frontend visualization layer and the backend entity-management layer is categorized into three distinct pipelines:

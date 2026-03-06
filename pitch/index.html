@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WAR ROOM — Hackathon Pitch Deck</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=Barlow+Condensed:wght@500;600&family=Orbitron:wght@700;900&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      /* LIGHT THEME (Tactical / Paper / Blueprint vibe) */
+      --bg-deepest: #F0F4F8;
+      /* Light cool gray background */
+      --bg-surface: #FFFFFF;
+      /* White panels */
+      --bg-elevated: #F8FAFC;
+      /* Slightly off-white for contrast */
+      --bg-hover: #E2E8F0;
+      /* Light gray hover */
+      --bg-border: #CBD5E1;
+      /* Crisp borders */
+
+      --status-critical: #E11D48;
+      /* Deeper crimson for visibility on light bg */
+      --status-high: #EA580C;
+      /* Burnt orange */
+      --status-elevated: #D97706;
+      /* Amber/gold */
+      --status-contained: #059669;
+      /* Emerald green */
+      --status-monitoring: #2563EB;
+      /* Royal blue */
+
+      --accent-primary: #0284C7;
+      /* Strong tactical blue */
+      --accent-voice: #0EA5E9;
+      /* Lighter blue for voice */
+      --accent-intel: #7C3AED;
+      /* Deep purple */
+      --accent-gold: #B45309;
+      /* Deep gold for contrast */
+
+      --text-primary: #0F172A;
+      /* Near black text */
+      --text-secondary: #475569;
+      /* Slate text */
+      --text-muted: #64748B;
+      /* Light slate text */
+      --text-code: #059669;
+      /* Green code text */
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: var(--bg-deepest);
+      color: var(--text-primary);
+      font-family: 'IBM Plex Mono', monospace;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    /* Scanline overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.03) 2px, rgba(0, 0, 0, 0.03) 4px);
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ─── SLIDE SYSTEM ─── */
+    .deck {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s ease;
+    }
+
+    .slide.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    /* ─── TOP BAR ─── */
+    .top-bar {
+      height: 48px;
+      background: var(--bg-deepest);
+      border-bottom: 1px solid var(--bg-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      flex-shrink: 0;
+    }
+
+    .top-bar-logo {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 18px;
+      letter-spacing: 0.12em;
+      color: var(--accent-primary);
+    }
+
+    .top-bar-center {
+      font-size: 13px;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+    }
+
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 600;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      color: var(--status-critical);
+    }
+
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--status-critical);
+      animation: pulse-red 1s infinite;
+    }
+
+    @keyframes pulse-red {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: 0.3
+      }
+    }
+
+    /* ─── SLIDE CONTENT ─── */
+    .slide-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 40px 80px;
+      overflow: hidden;
+    }
+
+    /* ─── SLIDE NAV ─── */
+    .nav-bar {
+      height: 44px;
+      background: var(--bg-deepest);
+      border-top: 1px solid var(--bg-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .nav-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--bg-border);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .nav-dot.active {
+      background: var(--accent-primary);
+      box-shadow: 0 0 8px var(--accent-primary);
+    }
+
+    .nav-btn {
+      background: transparent;
+      border: 1px solid var(--bg-border);
+      color: var(--text-muted);
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      padding: 6px 18px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin: 0 12px;
+    }
+
+    .nav-btn:hover {
+      border-color: var(--accent-primary);
+      color: var(--accent-primary);
+    }
+
+    .slide-counter {
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--text-muted);
+      min-width: 70px;
+      text-align: center;
+    }
+
+    /* ─── TYPOGRAPHY ─── */
+    .slide-tag {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 600;
+      font-size: 15px;
+      letter-spacing: 0.16em;
+      color: var(--accent-primary);
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+
+    .slide-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 64px;
+      letter-spacing: 0.06em;
+      line-height: 1.0;
+      color: var(--text-primary);
+      text-align: center;
+    }
+
+    .slide-title .highlight {
+      color: var(--accent-primary);
+    }
+
+    .slide-title .critical {
+      color: var(--status-critical);
+    }
+
+    .slide-subtitle {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 16px;
+      color: var(--text-secondary);
+      margin-top: 16px;
+      text-align: center;
+      max-width: 780px;
+      line-height: 1.8;
+    }
+
+    /* ─── GLOW ACCENT LINE ─── */
+    .accent-line {
+      width: 80px;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
+      margin: 24px auto;
+    }
+
+    /* ─── CARDS ─── */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      width: 100%;
+      max-width: 1100px;
+      margin-top: 20px;
+    }
+
+    .cards-grid-2 {
+      grid-template-columns: repeat(2, 1fr);
+      max-width: 800px;
+    }
+
+    .cards-grid-4 {
+      grid-template-columns: repeat(4, 1fr);
+      max-width: 1200px;
+    }
+
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid var(--bg-border);
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 3px;
+      height: 100%;
+    }
+
+    .card.blue::before {
+      background: var(--accent-primary);
+    }
+
+    .card.green::before {
+      background: var(--status-contained);
+    }
+
+    .card.red::before {
+      background: var(--status-critical);
+    }
+
+    .card.amber::before {
+      background: var(--status-elevated);
+    }
+
+    .card.purple::before {
+      background: var(--accent-intel);
+    }
+
+    .card.gold::before {
+      background: var(--accent-gold);
+    }
+
+    .card-icon {
+      font-size: 32px;
+      margin-bottom: 12px;
+    }
+
+    .card-label {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 600;
+      font-size: 13px;
+      letter-spacing: 0.14em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+
+    .card-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 22px;
+      letter-spacing: 0.06em;
+      color: var(--text-primary);
+      margin-bottom: 10px;
+    }
+
+    .card-body {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+    }
+
+    /* ─── METRIC TILES ─── */
+    .metric-tile {
+      background: var(--bg-surface);
+      border: 1px solid var(--bg-border);
+      padding: 28px 20px;
+      text-align: center;
+    }
+
+    .metric-value {
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 900;
+      font-size: 48px;
+      color: var(--accent-primary);
+      display: block;
+      line-height: 1;
+    }
+
+    .metric-label {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 600;
+      font-size: 13px;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+      margin-top: 10px;
+      text-transform: uppercase;
+    }
+
+    /* ─── FLOW DIAGRAM (TEXT) ─── */
+    .flow-row {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      width: 100%;
+      max-width: 1000px;
+      margin-top: 24px;
+    }
+
+    .flow-node {
+      background: var(--bg-surface);
+      border: 1px solid var(--bg-border);
+      padding: 14px 20px;
+      text-align: center;
+      flex: 1;
+    }
+
+    .flow-node-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      color: var(--text-primary);
+    }
+
+    .flow-node-sub {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .flow-arrow {
+      font-size: 16px;
+      color: var(--accent-primary);
+      padding: 0 4px;
+      flex-shrink: 0;
+    }
+
+    /* ─── SECTION HEADER ─── */
+    .section-header {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 600;
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--bg-border);
+      padding-bottom: 8px;
+      width: 100%;
+      margin-bottom: 16px;
+    }
+
+    /* ─── THREAT BADGE ─── */
+    .threat-badge {
+      display: inline-block;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 600;
+      font-size: 15px;
+      letter-spacing: 0.14em;
+      padding: 6px 18px;
+      border: 1px solid var(--status-elevated);
+      color: var(--status-elevated);
+      background: rgba(255, 184, 0, 0.1);
+      margin-top: 16px;
+    }
+
+    /* ─── AGENT LIST ─── */
+    .agent-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--bg-border);
+      width: 100%;
+    }
+
+    .agent-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .agent-name {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 20px;
+      color: var(--text-primary);
+      flex: 1;
+    }
+
+    .agent-role {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .agent-tag {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 600;
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      padding: 4px 12px;
+      border: 1px solid;
+    }
+
+    /* ─── WIDE LAYOUT ─── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+      width: 100%;
+      max-width: 1100px;
+      margin-top: 16px;
+    }
+
+    .panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--bg-border);
+      padding: 20px;
+    }
+
+    .panel-header {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 600;
+      font-size: 14px;
+      letter-spacing: 0.14em;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--bg-border);
+      padding-bottom: 10px;
+      margin-bottom: 16px;
+    }
+
+    /* ─── CODE BLOCK ─── */
+    .code-line {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 14px;
+      color: var(--text-code);
+      line-height: 2.2;
+    }
+
+    .code-comment {
+      color: var(--text-muted);
+    }
+
+    .code-key {
+      color: var(--accent-primary);
+    }
+
+    /* ─── HACKATHON CTA ─── */
+    .cta-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--accent-primary);
+      padding: 32px 48px;
+      text-align: center;
+      max-width: 700px;
+      box-shadow: 0 0 40px rgba(74, 158, 255, 0.1);
+      position: relative;
+    }
+
+    .cta-box::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(74, 158, 255, 0.03);
+    }
+
+    /* ─── WAVEFORM ─── */
+    .waveform {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 30px;
+      margin-top: 12px;
+    }
+
+    .wave-bar {
+      width: 4px;
+      background: var(--accent-voice);
+      border-radius: 1px;
+      animation: wave-anim 0.8s ease-in-out infinite;
+    }
+
+    @keyframes wave-anim {
+
+      0%,
+      100% {
+        height: 4px;
+      }
+
+      50% {
+        height: 28px;
+      }
+    }
+
+    /* ─── GLOWING TITLE ─── */
+    .glow-title {
+      text-shadow: 0 0 40px rgba(74, 158, 255, 0.4);
+    }
+
+    .glow-red {
+      text-shadow: 0 0 40px rgba(255, 45, 45, 0.4);
+    }
+
+    /* ─── STACK BADGE ─── */
+    .stack-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--bg-border);
+    }
+
+    .stack-icon {
+      font-size: 22px;
+    }
+
+    .stack-name {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 20px;
+      flex: 1;
+    }
+
+    .stack-role {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* ─── TIMELINE ─── */
+    .timeline-item {
+      display: flex;
+      gap: 20px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--bg-border);
+      align-items: flex-start;
+    }
+
+    .timeline-num {
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--accent-primary);
+      min-width: 28px;
+    }
+
+    .timeline-text {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    .timeline-title {
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--text-primary);
+      margin-bottom: 4px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="deck">
+
+    <!-- ─── SLIDE 1: TITLE ─── -->
+    <div class="slide active" id="slide-0">
+      <div class="top-bar">
+        <div class="top-bar-logo">⚔️ WAR ROOM</div>
+        <div class="top-bar-center">HACKATHON PRESENTATION • SLIDE 01 / 09</div>
+        <div class="live-badge">
+          <div class="live-dot"></div> LIVE
+        </div>
+      </div>
+      <div class="slide-body">
+        <div class="slide-tag">⚔️ HACKATHON 2026 — AI TRACK</div>
+        <div class="slide-title glow-title">
+          WAR<br><span class="highlight">ROOM</span>
+        </div>
+        <div class="waveform" style="justify-content:center">
+          <div class="wave-bar" style="animation-delay:0s;height:8px"></div>
+          <div class="wave-bar" style="animation-delay:0.1s;height:14px"></div>
+          <div class="wave-bar" style="animation-delay:0.2s;height:20px"></div>
+          <div class="wave-bar" style="animation-delay:0.3s;height:28px"></div>
+          <div class="wave-bar" style="animation-delay:0.4s;height:20px"></div>
+          <div class="wave-bar" style="animation-delay:0.5s;height:14px"></div>
+          <div class="wave-bar" style="animation-delay:0.6s;height:8px"></div>
+        </div>
+        <div class="accent-line"></div>
+        <div class="slide-subtitle">
+          An immersive, multi-agent AI crisis simulation platform where you command a room full of specialist AI
+          advisors — each with their own voice, expertise, and agenda — to navigate high-stakes, real-time crisis
+          scenarios.
+        </div>
+        <div class="threat-badge">🔴 THREAT LEVEL: CRITICAL</div>
+      </div>
+      <div class="nav-bar">
+        <button class="nav-btn" onclick="prevSlide()">◀ PREV</button>
+        <div id="dots"></div>
+        <span class="slide-counter" id="counter">01 / 09</span>
+        <button class="nav-btn" onclick="nextSlide()">NEXT ▶</button>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 2: THE PROBLEM ─── -->
+    <div class="slide" id="slide-1">
+      <div class="top-bar">
+        <div class="top-bar-logo">⚔️ WAR ROOM</div>
+        <div class="top-bar-center">THE PROBLEM</div>
+        <div class="live-badge">
+          <div class="live-dot"></div> LIVE
+        </div>
+      </div>
+      <div class="slide-body">
+        <div class="slide-tag">⚡ PROBLEM STATEMENT</div>
+        <div class="slide-title" style="font-size:38px">
+          CRISIS DECISIONS ARE <span class="critical">MADE BLIND</span>
+        </div>
+        <div class="accent-line"></div>
+        <div class="cards-grid" style="margin-top:24px">
+          <div class="card red">
+            <div class="card-icon">🏢</div>
+            <div class="card-label">Enterprise</div>
+            <div class="card-title">No Safe Practice Ground</div>
+            <div class="card-body">Organizations drill crisis scenarios with paper exercises. When a real breach hits,
+              leadership has never actually felt the pressure of a live crisis room.</div>
+          </div>
+          <div class="card amber">
+            <div class="card-icon">🧠</div>
+            <div class="card-label">Consulting</div>
+            <div class="card-title">Expensive Simulations</div>
+            <div class="card-body">Traditional tabletop exercises cost thousands, require human role-players, and can't
+              realistically simulate rapidly escalating, multi-stakeholder crises.</div>
+          </div>
+          <div class="card purple">
+            <div class="card-icon">🎙️</div>
+            <div class="card-label">The Missing Frontier</div>
+            <div class="card-title">Voice + Multi-Agent = Unsolved</div>
+            <div class="card-body">Voice AI exists. Multi-agent AI exists. Nobody has fused them into one coherent,
+              real-time experience where AI advisors <em>speak</em>, <em>debate</em>, and <em>respond to you</em> —
+              live, without a script.</div>
+          </div>
+        </div>
+      </div>
+      <div class="nav-bar">
+        <button class="nav-btn" onclick="prevSlide()">◀ PREV</button>
+        <div id="dots1"></div>
+        <span class="slide-counter">02 / 09</span>
+        <button class="nav-btn" onclick="nextSlide()">NEXT ▶</button>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 3: THE SOLUTION ─── -->
+    <div class="slide" id="slide-2">
+      <div class="top-bar">
+        <div class="top-bar-logo">⚔️ WAR ROOM</div>
+        <div class="top-bar-center">THE SOLUTION</div>
+        <div class="live-badge">
+          <div class="live-dot"></div> LIVE
+        </div>
+      </div>
+      <div class="slide-body">
+        <div class="slide-tag">✅ WAR ROOM — THE SOLUTION</div>
+        <div class="slide-title" style="font-size:36px;text-align:center">
+          YOUR PERSONAL <span class="highlight">AI CRISIS COMMAND CENTER</span>
+        </div>
+        <div class="accent-line"></div>
+        <div class="slide-subtitle">
+          Enter a crisis scenario. A team of AI specialists assembles around you — each one speaks in their own voice,
+          debates in real time, and pushes back on your decisions. You are the Chairman. Every call is yours.
+        </div>
+        <div class="cards-grid" style="margin-top:20px">
+          <div class="card blue">
+            <div class="card-icon">🎭</div>
+            <div class="card-title">Dynamically Generated Teams</div>
+            <div class="card-body">The Scenario Analyst agent reads your crisis brief and assembles the exact
+              specialists you need — Legal, PR, Engineering, Finance — each with tailored expertise.</div>
+          </div>
+          <div class="card green">
+            <div class="card-icon">🎙️</div>
+            <div class="card-title">Real-Time Voice Debate</div>
+            <div class="card-body">Every agent speaks aloud using ElevenLabs ultra-realistic TTS. They interrupt, they
+              agree, they conflict. The room feels alive because it is.</div>
+          </div>
+          <div class="card amber">
+            <div class="card-icon">🌍</div>
+            <div class="card-title">Escalating World Events</div>
+            <div class="card-body">The World Agent injects breaking news and new developments on a timer. Nothing stays
+              static. Your crisis evolves whether you're ready or not.</div>
+          </div>
+        </div>
+      </div>
+      <div class="nav-bar">
+        <button class="nav-btn" onclick="prevSlide()">◀ PREV</button>
+        <div></div>
+        <span class="slide-counter">03 / 09</span>
+        <button class="nav-btn" onclick="nextSlide()">NEXT ▶</button>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 4: HOW IT WORKS ─── -->
+    <div class="slide" id="slide-3">
+      <div class="top-bar">
+        <div class="top-bar-logo">⚔️ WAR ROOM</div>
+        <div class="top-bar-center">HOW IT WORKS</div>
+        <div class="live-badge">
+          <div class="live-dot"></div> LIVE
+        </div>
+      </div>
+      <div class="slide-body">
+        <div class="slide-tag">⚙️ AGENT FLOW — FROM SCENARIO TO SESSION</div>
+        <div class="slide-title" style="font-size:32px">THE AGENT ASSEMBLY CHAIN</div>
+        <div class="accent-line"></div>
+        <div style="width:100%;max-width:1000px;margin-top:8px">
+          <div class="agent-row" style="background:rgba(74,158,255,0.05);border-left:3px solid var(--accent-primary)">
+            <div class="agent-dot" style="background:var(--accent-primary);box-shadow:0 0 6px var(--accent-primary)">
+            </div>
+            <div style="flex:1">
+              <div class="agent-name">SCENARIO ANALYST — The Architect</div>
+              <div class="agent-role">Reads your crisis brief → decides which specialists are needed → spawns and
+                configures each sub-agent with a unique name, role, voice, and expertise</div>
+            </div>
+            <div class="agent-tag" style="border-color:var(--accent-primary);color:var(--accent-primary)">SPAWNS TEAM
+            </div>
+          </div>
+          <div class="agent-row" style="background:rgba(0,200,150,0.03)">
+            <div class="agent-dot"
+              style="background:var(--status-contained);box-shadow:0 0 6px var(--status-contained);animation:pulse-g 1.5s infinite">
+            </div>
+            <div style="flex:1">
+              <div class="agent-name">SPECIALIST ADVISORS — The War Council</div>
+              <div class="agent-role">e.g. Legal Expert, Chief Communications Officer, Engineering Lead — each runs an
+                independent reasoning loop, speaks in voice, and posts decisions to the Crisis Board</div>
+            </div>
+            <div class="agent-tag" style="border-color:var(--status-contained);color:var(--status-contained)">LIVE
+              DEBATE</div>
+          </div>
+          <div class="agent-row">
+            <div class="agent-dot" style="background:var(--status-high)"></div>
+            <div style="flex:1">
+              <div class="agent-name">WORLD AGENT — The Game Master</div>
+              <div class="agent-role">Runs on a timer → injects escalation events, breaking news, and new complications
+                into the session regardless of your current decisions</div>
+            </div>
+            <div class="agent-tag" style="border-color:var(--status-high);color:var(--status-high)">ESCALATES</div>
+          </div>
+          <div class="agent-row">
+            <div class="agent-dot" style="background:var(--accent-intel)"></div>
+            <div style="flex:1">
+              <div class="agent-name">OBSERVER AGENT — The Scorekeeper</div>
+              <div class="agent-role">Silently monitors all transcripts → evaluates decisions → updates live trust
+                scores, public confidence, and crisis posture metrics in real time</div>
+            </div>
+            <div class="agent-tag" style="border-color:var(--accent-intel);color:var(--accent-intel)">SCORES</div>
+          </div>
+        </div>
+      </div>
+      <div class="nav-bar">
+        <button class="nav-btn" onclick="prevSlide()">◀ PREV</button>
+        <div></div>
+        <span class="slide-counter">04 / 09</span>
+        <button class="nav-btn" onclick="nextSlide()">NEXT ▶</button>
+      </div>
+    </div>
+    <style>
+      @keyframes pulse-g {
+
+        0%,
+        100% {
+          opacity: 1;
+          transform: scale(1)
+        }
+
+        50% {
+          opacity: 0.6;
+          transform: scale(1.3)
+        }
+      }
+    </style>
+
+    <!-- ─── SLIDE 5: TECH STACK ─── -->
+    <div class="slide" id="slide-4">
+      <div class="top-bar">
+        <div class="top-bar-logo">⚔️ WAR ROOM</div>
+        <div class="top-bar-center">TECH STACK</div>
+        <div class="live-badge">
+          <div class="live-dot"></div> LIVE
+        </div>
+      </div>
+      <div class="slide-body">
+        <div class="slide-tag">🔧 TECHNOLOGY STACK</div>
+        <div class="slide-title" style="font-size:36px">BUILT WITH <span class="highlight">REAL INFRASTRUCTURE</span>
+        </div>
+        <div class="accent-line"></div>
+        <div class="two-col" style="margin-top:12px">
+          <div class="panel">
+            <div class="panel-header">INTELLIGENCE LAYER</div>
+            <div class="stack-item">
+              <div class="stack-icon">🤖</div>
+              <div style="flex:1">
+                <div class="stack-name">Z.AI GLM Models</div>
+                <div class="stack-role">Primary LLM for agent reasoning via OpenAI-compatible SDK</div>
+              </div>
+            </div>
+            <div class="stack-item">
+              <div class="stack-icon">🎙️</div>
+              <div style="flex:1">
+                <div class="stack-name">ElevenLabs</div>
+                <div class="stack-role">Ultra-realistic TTS/STT — each agent has a unique voice</div>
+              </div>
+            </div>
+            <div class="stack-item">
+              <div class="stack-icon">📡</div>
+              <div style="flex:1">
+                <div class="stack-name">LiveKit (WebRTC)</div>
+                <div class="stack-role">Real-time bidirectional audio streaming pipeline</div>
+              </div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">PLATFORM LAYER</div>
+            <div class="stack-item">
+              <div class="stack-icon">⚡</div>
+              <div style="flex:1">
+                <div class="stack-name">FastAPI (Python)</div>
+                <div class="stack-role">Async backend gateway — REST + WebSocket orchestration</div>
+              </div>
+            </div>
+            <div class="stack-item">
+              <div class="stack-icon">⚛️</div>
+              <div style="flex:1">
+                <div class="stack-name">Next.js (React)</div>
+                <div class="stack-role">Cinematic tactical UI with real-time state sync</div>
+              </div>
+            </div>
+            <div class="stack-item">
+              <div class="stack-icon">🔥</div>
+              <div style="flex:1">
+                <div class="stack-name">Firestore</div>
+                <div class="stack-role">Event-driven state store with snapshot listeners</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="nav-bar">
+        <button class="nav-btn" onclick="prevSlide()">◀ PREV</button>
+        <div></div>
+        <span class="slide-counter">05 / 09</span>
+        <button class="nav-btn" onclick="nextSlide()">NEXT ▶</button>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 6: ARCHITECTURE ─── -->
+    <div class="slide" id="slide-5">
+      <div class="top-bar">
+        <div class="top-bar-logo">⚔️ WAR ROOM</div>
+        <div class="top-bar-center">SYSTEM ARCHITECTURE</div>
+        <div class="live-badge">
+          <div class="live-dot"></div> LIVE
+        </div>
+      </div>
+      <div class="slide-body">
+        <div class="slide-tag">🏗️ ARCHITECTURE OVERVIEW</div>
+        <div class="slide-title" style="font-size:32px">THREE PIPELINES. ONE <span class="highlight">LIVE ROOM.</span>
+        </div>
+        <div class="accent-line"></div>
+        <div class="cards-grid" style="margin-top:16px">
+          <div class="card blue">
+            <div class="card-label">Pipeline 01 — State</div>
+            <div class="card-icon">📊</div>
+            <div class="card-title">REST + WebSocket Event Bus</div>
+            <div class="card-body">
+              <div class="code-line"><span class="code-key">Frontend</span> → GET /api/sessions</div>
+              <div class="code-line"><span class="code-key">Firestore</span> → Snapshot Listener</div>
+              <div class="code-line"><span class="code-key">Gateway</span> → Push via ws://</div>
+              <br />
+              <span style="color:var(--text-muted)">Every agent action instantly syncs to the UI. No polling. No
+                lag.</span>
+            </div>
+          </div>
+          <div class="card green">
+            <div class="card-label">Pipeline 02 — Voice</div>
+            <div class="card-icon">🎙️</div>
+            <div class="card-title">Bidirectional Audio Stream</div>
+            <div class="card-body">
+              <div class="code-line"><span class="code-key">Chairman Mic</span> → LiveKit</div>
+              <div class="code-line"><span class="code-key">ElevenLabs STT</span> → Transcript</div>
+              <div class="code-line"><span class="code-key">Z.AI GLM</span> → Agent Response</div>
+              <div class="code-line"><span class="code-key">ElevenLabs TTS</span> → Audio Out</div>
+            </div>
+          </div>
+          <div class="card purple">
+            <div class="card-label">Pipeline 03 — Agent Isolation</div>
+            <div class="card-icon">🔒</div>
+            <div class="card-title">Isolated Memory + Shared Board</div>
+            <div class="card-body">
+              Each agent has private memory. They share only the Crisis Board. No agent can read another's internal
+              reasoning — just like real advisors in separate rooms.
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="nav-bar">
+        <button class="nav-btn" onclick="prevSlide()">◀ PREV</button>
+        <div></div>
+        <span class="slide-counter">06 / 09</span>
+        <button class="nav-btn" onclick="nextSlide()">NEXT ▶</button>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 7: KEY METRICS / WHY IT'S HARD ─── -->
+    <div class="slide" id="slide-6">
+      <div class="top-bar">
+        <div class="top-bar-logo">⚔️ WAR ROOM</div>
+        <div class="top-bar-center">WHAT WE BUILT</div>
+        <div class="live-badge">
+          <div class="live-dot"></div> LIVE
+        </div>
+      </div>
+      <div class="slide-body">
+        <div class="slide-tag">📐 SCOPE & COMPLEXITY</div>
+        <div class="slide-title" style="font-size:32px">WHY THIS IS <span class="highlight">NON-TRIVIAL</span></div>
+        <div class="accent-line"></div>
+        <div class="cards-grid cards-grid-4" style="margin-top:16px;max-width:1100px">
+          <div class="metric-tile">
+            <span class="metric-value" style="color:var(--accent-primary)">5+</span>
+            <div class="metric-label">Concurrent AI Agents per Session</div>
+          </div>
+          <div class="metric-tile">
+            <span class="metric-value" style="color:var(--status-contained)">3</span>
+            <div class="metric-label">Real-Time Pipelines (State, Audio, Events)</div>
+          </div>
+          <div class="metric-tile">
+            <span class="metric-value" style="color:var(--accent-intel)">∞</span>
+            <div class="metric-label">Unique Scenarios — Dynamically Generated</div>
+          </div>
+          <div class="metric-tile">
+            <span class="metric-value" style="color:var(--accent-gold)">0ms</span>
+            <div class="metric-label">UI Polling — Pure Event-Driven Push</div>
+          </div>
+        </div>
+        <div class="cards-grid cards-grid-2" style="margin-top:4px;max-width:1100px">
+          <div class="card blue">
+            <div class="card-label">Hard Engineering Problem</div>
+            <div class="card-title">Active Speaker Gating</div>
+            <div class="card-body">We solved multi-agent voice leakage — where multiple AIs would talk over each other —
+              with strict, backend-enforced speaking locks and token-based turn management.</div>
+          </div>
+          <div class="card amber">
+            <div class="card-label">Hard AI Problem</div>
+            <div class="card-title">Prompt Architecture at Scale</div>
+            <div class="card-body">Each agent maintains isolated long-term memory while sharing a global crisis state.
+              Custom base agent class with tool-based shared board read/write access.</div>
+          </div>
+        </div>
+      </div>
+      <div class="nav-bar">
+        <button class="nav-btn" onclick="prevSlide()">◀ PREV</button>
+        <div></div>
+        <span class="slide-counter">07 / 09</span>
+        <button class="nav-btn" onclick="nextSlide()">NEXT ▶</button>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 8: USE CASES ─── -->
+    <div class="slide" id="slide-7">
+      <div class="top-bar">
+        <div class="top-bar-logo">⚔️ WAR ROOM</div>
+        <div class="top-bar-center">APPLICATIONS & VISION</div>
+        <div class="live-badge">
+          <div class="live-dot"></div> LIVE
+        </div>
+      </div>
+      <div class="slide-body">
+        <div class="slide-tag">🚀 WHO NEEDS THIS</div>
+        <div class="slide-title" style="font-size:36px">REAL WORLD <span class="highlight">APPLICATIONS</span></div>
+        <div class="accent-line"></div>
+        <div class="cards-grid" style="margin-top:20px">
+          <div class="card gold">
+            <div class="card-icon">🏢</div>
+            <div class="card-label">Enterprise Training</div>
+            <div class="card-title">C-Suite Crisis Readiness</div>
+            <div class="card-body">Boards and executive teams use WAR ROOM to rehearse cyberattacks, regulatory crises,
+              PR disasters, and supply chain failures — before they happen for real.</div>
+          </div>
+          <div class="card blue">
+            <div class="card-icon">🎓</div>
+            <div class="card-label">Education</div>
+            <div class="card-title">Business School Simulations</div>
+            <div class="card-body">MBA programs replace expensive human role-playing exercises with unlimited, AI-driven
+              scenario simulations accessible from a browser.</div>
+          </div>
+          <div class="card green">
+            <div class="card-icon">🛡️</div>
+            <div class="card-label">Government & Defense</div>
+            <div class="card-title">Policy Stress-Testing</div>
+            <div class="card-body">Government agencies simulate policy decisions under crisis conditions — pandemic
+              response, infrastructure failures, geopolitical escalations.</div>
+          </div>
+        </div>
+      </div>
+      <div class="nav-bar">
+        <button class="nav-btn" onclick="prevSlide()">◀ PREV</button>
+        <div></div>
+        <span class="slide-counter">08 / 09</span>
+        <button class="nav-btn" onclick="nextSlide()">NEXT ▶</button>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 9: CLOSING CTA ─── -->
+    <div class="slide" id="slide-8">
+      <div class="top-bar">
+        <div class="top-bar-logo">⚔️ WAR ROOM</div>
+        <div class="top-bar-center">CLOSING</div>
+        <div class="live-badge">
+          <div class="live-dot"></div> LIVE
+        </div>
+      </div>
+      <div class="slide-body">
+        <div class="slide-tag">⚔️ THE CALL TO ACTION</div>
+        <div class="slide-title glow-title" style="font-size:48px">
+          THE ROOM IS <span class="highlight">WAITING</span>
+        </div>
+        <div class="accent-line"></div>
+        <div class="cta-box" style="margin-top:20px">
+          <div
+            style="font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:11px;letter-spacing:0.16em;color:var(--text-muted);margin-bottom:16px">
+            WHAT WE DEMONSTRATED TODAY</div>
+          <div class="timeline-item">
+            <div class="timeline-num">01</div>
+            <div>
+              <div class="timeline-title">Multi-Agent AI Orchestration</div>
+              <div class="timeline-text">Multiple specialist AI agents, each with memory and voice, debating a real
+                crisis in real time</div>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-num">02</div>
+            <div>
+              <div class="timeline-title">Dynamic Scenario Generation</div>
+              <div class="timeline-text">The Scenario Analyst assembles a bespoke expert team for every unique crisis —
+                no two sessions are the same</div>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-num">03</div>
+            <div>
+              <div class="timeline-title">Full-Stack Real-Time Infrastructure</div>
+              <div class="timeline-text">Event-driven architecture across voice, state, and AI decision pipelines with
+                zero polling</div>
+            </div>
+          </div>
+          <div class="timeline-item" style="border:none">
+            <div class="timeline-num" style="color:var(--accent-gold)">✓</div>
+            <div>
+              <div class="timeline-title" style="color:var(--accent-gold)">Built & Working — Right Now</div>
+              <div class="timeline-text">This is not a mockup. WAR ROOM is a deployed, functional system.</div>
+            </div>
+          </div>
+        </div>
+        <div class="waveform" style="justify-content:center;margin-top:20px">
+          <div class="wave-bar" style="animation-delay:0s"></div>
+          <div class="wave-bar" style="animation-delay:0.1s"></div>
+          <div class="wave-bar" style="animation-delay:0.2s"></div>
+          <div class="wave-bar" style="animation-delay:0.3s"></div>
+          <div class="wave-bar" style="animation-delay:0.4s"></div>
+          <div class="wave-bar" style="animation-delay:0.5s"></div>
+          <div class="wave-bar" style="animation-delay:0.6s"></div>
+          <div class="wave-bar" style="animation-delay:0.7s"></div>
+        </div>
+      </div>
+      <div class="nav-bar">
+        <button class="nav-btn" onclick="prevSlide()">◀ PREV</button>
+        <div></div>
+        <span class="slide-counter">09 / 09</span>
+        <button class="nav-btn" onclick="nextSlide()">NEXT ▶</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const TOTAL = 9;
+    let current = 0;
+
+    function showSlide(n) {
+      document.querySelectorAll('.slide').forEach((s, i) => {
+        s.classList.toggle('active', i === n);
+      });
+      document.querySelectorAll('.nav-dot').forEach((d, i) => {
+        d.classList.toggle('active', i === n);
+      });
+      document.getElementById('counter').textContent =
+        String(n + 1).padStart(2, '0') + ' / ' + String(TOTAL).padStart(2, '0');
+    }
+
+    function nextSlide() { current = (current + 1) % TOTAL; showSlide(current); }
+    function prevSlide() { current = (current - 1 + TOTAL) % TOTAL; showSlide(current); }
+
+    // Build dots in slide 0 nav bar
+    const dotsEl = document.getElementById('dots');
+    for (let i = 0; i < TOTAL; i++) {
+      const d = document.createElement('div');
+      d.className = 'nav-dot' + (i === 0 ? ' active' : '');
+      d.onclick = () => { current = i; showSlide(i); };
+      dotsEl.appendChild(d);
+    }
+
+    // Keyboard navigation
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowRight' || e.key === 'Space') nextSlide();
+      if (e.key === 'ArrowLeft') prevSlide();
+    });
+  </script>
+</body>
+
+</html>
