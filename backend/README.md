@@ -6,8 +6,7 @@ The backend of the **WAR ROOM** application is a robust, asynchronous API built 
 
 This document outlines the core architecture and systemic components that power the backend simulation environment.
 
-## System Overview 
-
+## System Overview
 
 Think of the WAR ROOM backend as the control center of a highly coordinated team of experts. When a crisis begins, the control center immediately brings in specialized advisors (our AI Agents) tailored to the situation—such as legal experts, public relations managers, or military strategists.
 
@@ -74,6 +73,47 @@ The simulation is driven by distinct, specialized AI agents operating concurrent
 
 * Manages the complex orchestration of LiveKit sessions, OpenAI API LLM configurations, and ElevenLabs voice assignments (`voice_assignment.py` & `voice_routes.py`).
 * It ensures that distinct, consistent voices are mapped to generated agents, creating an immersive localized audio experience while enforcing a strict gate for speaker turns to prevent voice leakage.
+
+### 5. Knowledge & Memory Architecture
+
+The WAR ROOM application enforces a strictly isolated memory architecture for each agent, mitigating hallucinations and ensuring specialized domain focus.
+
+```mermaid
+graph LR
+    subgraph "Shared Crisis Context"
+        SB[(Firestore: 
+        Crisis Session DB)]
+    end
+
+    subgraph "Agent 1 Environment (e.g., Legal Base)"
+        A1[CrisisAgent Instance]
+        Z1(AI Model)
+        T1[[Agent Tools]]
+        M1[(Firestore: 
+        Private Memory)]
+        
+        A1 -- "System Prompt + Context" --> Z1
+        Z1 -- "Calls Function" --> T1
+        T1 -- "Read/Write" --> M1
+    end
+    
+    subgraph "Agent 2 Environment (e.g., PR Base)"
+        A2[CrisisAgent Instance]
+        Z2(AI Model)
+        T2[[Agent Tools]]
+        M2[(Firestore: 
+        Private Memory)]
+        
+        A2 -- "System Prompt + Context" --> Z2
+        Z2 -- "Calls Function" --> T2
+        T2 -- "Read/Write" --> M2
+    end
+    
+    T1 -- "Read/Write via Crisis Board Tools" --> SB
+    T2 -- "Read/Write via Crisis Board Tools" --> SB
+    
+    M1 -.->|Strict Isolation: Cannot read other agents' memory| M2
+```
 
 ## Data Flow & Lifecycle
 
