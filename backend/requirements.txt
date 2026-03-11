@@ -1,5 +1,6 @@
 # WAR ROOM Backend Dependencies
 openai
+boto3
 google-cloud-firestore
 google-cloud-pubsub
 fastapi
@@ -8,8 +9,9 @@ websockets
 pydantic
 pydantic-settings
 python-dotenv
-livekit-agents[elevenlabs]
-livekit-plugins-elevenlabs
+livekit-agents
+livekit-plugins-aws[realtime]
+livekit-plugins-google
 
 # Testing
 pytest

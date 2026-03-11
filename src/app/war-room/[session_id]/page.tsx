@@ -322,10 +322,17 @@ export default function WarRoomPage() {
     const speechIdx = useRef(0);
     const intelIdx = useRef(0);
     const decisionIdx = useRef(0);
+    const mountedRef = useRef(true);
 
     // Left Panel tabs
     const [leftPanelTab, setLeftPanelTab] = useState<"agents" | "documents">("agents");
     const [finalizingDocs, setFinalizingDocs] = useState(false);
+
+    // Prevent state updates after unmount (avoids removeChild reconciliation errors)
+    useEffect(() => {
+        mountedRef.current = true;
+        return () => { mountedRef.current = false; };
+    }, []);
 
     // ── Audio player for agent voices ─────────────────────────────────────────
     const handlePlaybackEnd = useCallback((agentId: string) => {
@@ -671,9 +678,11 @@ export default function WarRoomPage() {
         setChairmanName(creds.chairmanName || "DIRECTOR");
 
         const hydrate = async () => {
+            if (!mountedRef.current) return;
             // 1. Get session state
             try {
                 const state = await getSessionState(creds.sessionId, creds.token);
+                if (!mountedRef.current) return;
                 if (state.crisis_title) setCrisisTitle(state.crisis_title);
                 if (state.crisis_domain) setCrisisDomain(state.crisis_domain);
                 if (state.crisis_brief) setCrisisBrief(state.crisis_brief);
@@ -1277,6 +1286,11 @@ export default function WarRoomPage() {
                     sessionTimeLeft={sessionTimeLeft}
                     onUpdateDocument={handleFinalizeDocuments}
                     isUpdatingDocument={finalizingDocs}
+                    onEndSession={() => {
+                        if (!sessionEnding && !sessionCompleted) {
+                            window.dispatchEvent(new CustomEvent("trigger-session-end"));
+                        }
+                    }}
                 />
             </div>
 

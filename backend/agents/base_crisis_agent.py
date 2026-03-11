@@ -3,8 +3,10 @@ WAR ROOM — Base Crisis Agent
 Per voice.md: ONE agent = ONE LiveKit session = ONE Firestore collection.
 
 Each agent runs a PERSISTENT background loop:
-  _livekit_voice_loop() → ElevenLabs STT → Z.AI GLM LLM → ElevenLabs TTS → audio events
+  _voice_loop() → Amazon Nova Sonic (speech-to-speech via LiveKit AWS plugin)
   _introduce_on_join()  → opening character line on session start
+
+Text reasoning uses Amazon Nova 2 Lite via OpenAI-compatible API.
 
 MEMORY ISOLATION:
   - self.live_session belongs to THIS agent only, NEVER shared
@@ -34,9 +36,9 @@ class CrisisAgent:
     """
     One CrisisAgent = one LiveKit session = one Firestore collection.
 
-    AUDIO PIPELINE (livekit_elevenlabs mode):
-      chairman mic PCM → audio_in_queue → ElevenLabs STT
-              → Z.AI GLM text LLM → ElevenLabs TTS
+    AUDIO PIPELINE (livekit_aws mode):
+      chairman mic PCM → audio_in_queue → Amazon Nova Sonic (speech-to-speech)
+              → Nova 2 Lite text LLM reasoning → Nova Sonic audio output
               → push_event_direct(agent_audio_chunk) → browser speakers
     """
 
@@ -67,14 +69,9 @@ class CrisisAgent:
 
         settings = get_settings()
         self.voice_backend = settings.voice_backend
-        self.elevenlabs_stt_model = settings.elevenlabs_stt_model
-        self.elevenlabs_tts_model = settings.elevenlabs_tts_model
 
-        # LiveKit ElevenLabs stack (optional backend mode)
-        self._lk_stt = None
-        self._lk_tts = None
-        self._lk_http_session = None
-        self._lk_available_voice_ids: set[str] = set()
+        # Amazon Nova Sonic realtime model (via LiveKit AWS plugin)
+        self._nova_sonic_model = None
 
         # Firestore refs (lazy-initialized)
         self._db = None
@@ -104,17 +101,23 @@ class CrisisAgent:
         """
         Human-readable runtime stack marker for backend logs.
         """
-        if self._lk_stt and self._lk_tts:
+        if self._nova_sonic_model:
+            from utils.model_provider import get_active_provider
             allow_interruptions = self.livekit_session_config.get(
                 "voice_options", {}
             ).get("allow_interruptions", True)
             settings = get_settings()
+            provider = get_active_provider()
+            if provider == "aws":
+                llm_label = f"nova:{settings.nova_agent_model}"
+                voice_label = f"nova-sonic-2:{self.assigned_voice}"
+            else:
+                llm_label = f"gemini:{settings.gemini_agent_model}"
+                voice_label = f"gemini-live:{self.assigned_voice}"
             return (
-                f"backend={self.voice_backend} "
-                f"stt=elevenlabs:{self.elevenlabs_stt_model} "
-                f"tts=elevenlabs:{self.elevenlabs_tts_model} "
-                f"voice_id={self.assigned_voice} "
-                f"llm=zai:{settings.zai_agent_model} "
+                f"backend={provider} "
+                f"voice={voice_label} "
+                f"llm={llm_label} "
                 f"allow_interruptions={str(bool(allow_interruptions)).lower()}"
             )
         return f"backend=unavailable requested_backend={self.voice_backend}"
@@ -148,16 +151,15 @@ class CrisisAgent:
             )
         return self._crisis_ref
 
-    # ── Z.AI Client ───────────────────────────────────────────────────
+    # ── LLM Client (provider-aware) ────────────────────────────────────
 
-    def _get_zai_client(self):
-        """Return a configured OpenAI client pointing at Z.AI."""
-        from openai import OpenAI
-        settings = get_settings()
-        return OpenAI(
-            api_key=settings.zai_api_key,
-            base_url=settings.zai_base_url,
-        )
+    def _get_nova_client(self):
+        """
+        Kept for internal compatibility — delegates to model_provider.
+        Returns (client, model) for the currently active provider.
+        """
+        from utils.model_provider import get_text_client
+        return get_text_client("agent")
 
     def _build_tools(self) -> list:
         """Build the tool list. Tools are the ONLY way agents touch shared state."""
@@ -232,118 +234,45 @@ class CrisisAgent:
     async def initialize_live_session(self):
         """
         Initialize per-agent voice runtime.
-        Only supported runtime:
-          - LiveKit ElevenLabs STT/TTS plugins + Z.AI GLM text LLM
+        Primary:  Amazon Nova Sonic via livekit-plugins-aws
+        Fallback: Google Gemini Live via livekit-plugins-google
+        The active provider is determined by model_provider (set at startup).
         """
-        if self.voice_backend != "livekit_elevenlabs":
+        from utils.model_provider import get_voice_model, get_active_provider, is_aws_active
+
+        try:
+            # Pass per-agent voice assigned by the Scenario Analyst
+            self._nova_sonic_model = get_voice_model(voice=self.assigned_voice)
+            self.live_session = object()
+            active = get_active_provider()
+            settings = get_settings()
+
+            voice_label = self.assigned_voice
+
+            try:
+                await self.memory_ref.update({
+                    "voice_session_active": True,
+                    "voice_name": voice_label,
+                    "voice_backend": active,
+                })
+            except Exception:
+                logger.debug(
+                    f"[VOICE] memory_ref not ready for {self.agent_id} "
+                    "(will be created by bootstrapper)"
+                )
+
+            logger.info(
+                f"[VOICE] {active} voice ready for {self.agent_id} "
+                f"(voice={voice_label})"
+            )
+            return
+        except Exception as e:
             logger.warning(
-                f"[VOICE] Unsupported voice_backend={self.voice_backend} for {self.agent_id}. "
-                "Only livekit_elevenlabs is enabled."
+                f"[VOICE] Voice init failed for {self.agent_id}: {e}. "
+                "Voice disabled for this agent."
             )
             self.live_session = None
             return
-
-        if self.voice_backend == "livekit_elevenlabs":
-            try:
-                import aiohttp
-                from livekit.plugins import elevenlabs
-                settings = get_settings()
-                if not settings.elevenlabs_api_key:
-                    raise RuntimeError("ELEVENLABS_API_KEY missing")
-                self._lk_http_session = aiohttp.ClientSession(
-                    timeout=aiohttp.ClientTimeout(total=45, sock_connect=10),
-                )
-                self._lk_stt = elevenlabs.STT(
-                    api_key=settings.elevenlabs_api_key or None,
-                    model_id=self.elevenlabs_stt_model,
-                    http_session=self._lk_http_session,
-                )
-                self._lk_tts = elevenlabs.TTS(
-                    api_key=settings.elevenlabs_api_key or None,
-                    voice_id=self.assigned_voice,
-                    model=self.elevenlabs_tts_model,
-                    http_session=self._lk_http_session,
-                )
-                # Ensure assigned voice is valid for this ElevenLabs account.
-                await self._ensure_livekit_voice_selection()
-                # Presence marker for existing health checks.
-                self.live_session = object()
-
-                try:
-                    await self.memory_ref.update({
-                        "voice_session_active": True,
-                        "voice_name": self.assigned_voice,
-                        "voice_backend": self.voice_backend,
-                    })
-                except Exception:
-                    logger.debug(
-                        f"[VOICE] memory_ref not ready for {self.agent_id} "
-                        "(will be created by bootstrapper)"
-                    )
-
-                settings = get_settings()
-                logger.info(
-                    f"[VOICE] livekit_elevenlabs ready for {self.agent_id} "
-                    f"(stt={self.elevenlabs_stt_model}, "
-                    f"tts={self.elevenlabs_tts_model}, llm=zai:{settings.zai_agent_model})"
-                )
-                return
-            except Exception as e:
-                logger.warning(
-                    f"[VOICE] livekit_elevenlabs init failed for {self.agent_id}: {e}. "
-                    "Voice disabled for this agent."
-                )
-                self.live_session = None
-                return
-
-    async def _ensure_livekit_voice_selection(self) -> None:
-        """Validate current voice_id against ElevenLabs account voices and fallback safely."""
-        if not self._lk_tts:
-            return
-        try:
-            voices = await self._lk_tts.list_voices()
-            ids = set()
-            for v in voices or []:
-                vid = getattr(v, "id", None) or getattr(v, "voice_id", None)
-                if isinstance(vid, str) and vid:
-                    ids.add(vid)
-            self._lk_available_voice_ids = ids
-            if ids and self.assigned_voice not in ids:
-                fallback = next(iter(ids))
-                logger.warning(
-                    f"[VOICE] {self.agent_id} assigned_voice={self.assigned_voice} "
-                    f"not available in ElevenLabs account. Falling back to {fallback}."
-                )
-                self.assigned_voice = fallback
-                self._lk_tts.update_options(voice_id=fallback)
-        except Exception as e:
-            logger.warning(
-                f"[VOICE] {self.agent_id} failed to validate ElevenLabs voice list: {e}"
-            )
-
-    async def _rebuild_livekit_tts(self) -> bool:
-        """Recreate ElevenLabs TTS client after connection failures."""
-        if not self._lk_http_session:
-            return False
-        try:
-            from livekit.plugins import elevenlabs
-            settings = get_settings()
-            if self._lk_tts:
-                try:
-                    await self._lk_tts.aclose()
-                except Exception:
-                    pass
-            self._lk_tts = elevenlabs.TTS(
-                api_key=settings.elevenlabs_api_key or None,
-                voice_id=self.assigned_voice,
-                model=self.elevenlabs_tts_model,
-                http_session=self._lk_http_session,
-            )
-            await self._ensure_livekit_voice_selection()
-            return True
-        except Exception as e:
-            logger.warning(f"[VOICE] {self.agent_id} failed to rebuild ElevenLabs TTS: {e}")
-            return False
 
     def _build_live_system_prompt(self) -> str:
         """System instruction for the LLM."""
@@ -382,17 +311,16 @@ class CrisisAgent:
             return
 
         self._running = True
-        if self._lk_stt and self._lk_tts:
+        if self._nova_sonic_model:
             self._tasks = [
-                asyncio.create_task(self._livekit_voice_loop(), name=f"{self.agent_id}_lk_voice"),
+                asyncio.create_task(self._voice_loop(), name=f"{self.agent_id}_voice"),
                 asyncio.create_task(self._introduce_on_join(), name=f"{self.agent_id}_intro"),
             ]
             logger.info(
                 f"[{self.agent_id}] Background tasks started "
-                "(livekit_elevenlabs voice)"
+                "(livekit_aws Nova Sonic voice)"
             )
         else:
-            # No supported runtime available — log warning and skip
             logger.warning(
                 f"[{self.agent_id}] No supported voice runtime. "
                 "Live session unavailable."
@@ -438,14 +366,13 @@ class CrisisAgent:
         except Exception as e:
             logger.debug(f"[{self.agent_id}] kickoff turn skipped: {e}")
 
-    async def _livekit_voice_loop(self):
+    async def _voice_loop(self):
         """
-        Voice loop for:
-          STT: LiveKit ElevenLabs STT
-          LLM: Z.AI GLM via OpenAI SDK
-          TTS: LiveKit ElevenLabs TTS
+        Voice loop for Amazon Nova stack:
+          Voice: Nova Sonic (speech-to-speech via LiveKit AWS plugin)
+          Text LLM: Nova 2 Lite via OpenAI SDK
         """
-        logger.info(f"[{self.agent_id}] Starting livekit_elevenlabs voice loop")
+        logger.info(f"[{self.agent_id}] Starting livekit_aws voice loop")
         while self._running and self.live_session:
             try:
                 if not self.text_in_queue.empty():
@@ -467,84 +394,71 @@ class CrisisAgent:
                     except asyncio.TimeoutError:
                         break
 
-                transcript = await self._transcribe_pcm(b"".join(chunks))
-                if transcript:
-                    await self._generate_and_speak_reply(transcript, is_directive=False)
+                audio_data = b"".join(chunks)
+                if audio_data:
+                    await self._generate_and_speak_reply(
+                        "[Audio input received from chairman]", is_directive=False
+                    )
 
             except asyncio.CancelledError:
                 break
             except Exception as e:
-                logger.warning(f"[{self.agent_id}] livekit_elevenlabs loop error: {e}")
+                logger.warning(f"[{self.agent_id}] voice loop error: {e}")
                 await asyncio.sleep(0.5)
 
-    async def _transcribe_pcm(self, pcm_bytes: bytes) -> str:
-        if not self._lk_stt or not pcm_bytes:
-            return ""
-        try:
-            from livekit import rtc
-            samples_per_channel = len(pcm_bytes) // 2
-            if samples_per_channel <= 0:
-                return ""
-            frame = rtc.AudioFrame(
-                data=pcm_bytes,
-                sample_rate=16000,
-                num_channels=1,
-                samples_per_channel=samples_per_channel,
-            )
-            event = await self._lk_stt.recognize(frame)
-            if event.alternatives:
-                text = (event.alternatives[0].text or "").strip()
-                if len(text) < 2:
-                    return ""
-                if self._is_probable_echo(text):
-                    logger.info(f"[{self.agent_id}] Ignoring probable echo transcript")
-                    return ""
-                return text
-        except Exception as e:
-            logger.warning(f"[{self.agent_id}] STT failed: {e}")
-        return ""
-
     async def _generate_llm_reply(self, user_text: str) -> str:
+        from utils.model_provider import run_text_llm, get_active_provider
         settings = get_settings()
-        if not settings.zai_api_key:
-            return "[LLM unavailable — ZAI_API_KEY not configured]"
+
+        if not settings.nova_api_key and not settings.google_api_key:
+            return "[LLM unavailable — neither NOVA_API_KEY nor GOOGLE_API_KEY configured]"
 
         crisis_brief = await self._read_crisis_brief()
-        history = self._render_conversation_history()
+        defining_line = self.role_config.get("defining_line", "")
+        initial_position = self.role_config.get("initial_position", "")
+        agenda = self.role_config.get("agenda", "")
+
         intro_rule = (
             "You already introduced yourself earlier. Do NOT re-introduce your name/title."
             if self._introduced else
-            "If this is your first speaking turn, introduce yourself once in one sentence."
+            "This is your first speaking turn. Introduce yourself in ONE sentence, "
+            "then immediately address the crisis with specifics."
         )
+
+        position_context = ""
+        if not self._introduced:
+            if defining_line:
+                position_context += f"Your opening stance: \"{defining_line}\"\n"
+            if initial_position:
+                position_context += f"Your initial position: {initial_position}\n"
+            if agenda:
+                position_context += f"Your priority: {agenda}\n"
+
         system_prompt = (
             f"{self.skill_md}\n\n"
             f"VOICE PERSONA: You are {self.role_config.get('character_name', 'Agent')}, "
             f"the {self.role_config.get('role_title', 'Advisor')}.\n"
             f"CRISIS BRIEF:\n{crisis_brief}\n\n"
+            f"{position_context}"
             "Respond in character as spoken dialogue only. "
+            "Reference SPECIFIC facts, names, and stakes from the crisis — never be generic. "
             "Do NOT print JSON, markdown code fences, tool call lists, or function-call arguments. "
             f"{intro_rule} "
             "Continue the current conversation; do not reset context. "
             "Use 2-4 sentences. "
-            "In single-agent mode, do not fabricate debate with other agents unless explicitly asked."
+            "Do not fabricate debate with other agents unless explicitly asked."
         )
 
-        messages = [
-            {"role": "system", "content": system_prompt},
-        ]
-        # Include recent history as alternating user/assistant turns
+        messages = [{"role": "system", "content": system_prompt}]
         for item in self._conversation_history[-8:]:
-            role = item.get("role", "user")
-            turn_role = "user" if role == "chairman" else "assistant"
+            turn_role = "user" if item.get("role") == "chairman" else "assistant"
             messages.append({"role": turn_role, "content": item.get("text", "")})
         messages.append({"role": "user", "content": user_text})
 
         try:
-            client = self._get_zai_client()
-            response = await asyncio.to_thread(
-                client.chat.completions.create,
-                model=settings.zai_agent_model,
+            response = await run_text_llm(
                 messages=messages,
+                model_type="agent",
                 temperature=0.88,
                 max_tokens=600,
             )
@@ -554,9 +468,17 @@ class CrisisAgent:
             if text:
                 return text
         except Exception as e:
-            logger.warning(f"[{self.agent_id}] Z.AI LLM generation failed: {e}")
+            provider = get_active_provider()
+            err_str = str(e)
+            logger.error(
+                f"[{self.agent_id}] {provider} LLM generation failed: {e}"
+            )
+            if "404" in err_str or "401" in err_str or "NOT_FOUND" in err_str:
+                return ""
+            if "503" in err_str or "overloaded" in err_str.lower():
+                return ""
 
-        return "We are out of alignment. I need one concrete proposal from the room right now."
+        return ""
 
     def _sanitize_agent_reply(self, text: str) -> str:
         """
@@ -611,6 +533,219 @@ class CrisisAgent:
         if not t or not a:
             return False
         return t in a or a.startswith(t)
+
+    async def _stream_tts_audio(self, text: str) -> bool:
+        """
+        Convert text to speech and stream audio chunks to the frontend.
+
+        Primary:  Amazon Nova Sonic Realtime API (if AWS active + NOVA_API_KEY set)
+        Fallback: Google Gemini Live API
+
+        Returns True if audio was generated, False on any failure.
+        """
+        from utils.model_provider import is_aws_active
+
+        if is_aws_active():
+            ok = await self._stream_tts_nova(text)
+            if ok:
+                return True
+            logger.warning(
+                f"[{self.agent_id}] Nova Sonic TTS failed — falling back to Gemini"
+            )
+
+        return await self._stream_tts_gemini(text)
+
+    async def _stream_tts_nova(self, text: str) -> bool:
+        """
+        TTS via Amazon Nova Sonic Realtime WebSocket API.
+        Protocol: connect → session.update → conversation.item.create → receive audio.
+        """
+        import json as _json
+        import ssl
+        from utils.events import push_event_direct
+
+        try:
+            import websockets
+        except ImportError:
+            logger.debug(f"[{self.agent_id}] websockets package not available")
+            return False
+
+        settings = get_settings()
+        if (
+            not settings.nova_api_key
+            or settings.nova_api_key.startswith("your-")
+        ):
+            return False
+
+        try:
+            ssl_context = ssl.create_default_context()
+            url = "wss://api.nova.amazon.com/v1/realtime?model=nova-2-sonic-v1"
+            headers = {
+                "Authorization": f"Bearer {settings.nova_api_key}",
+                "Origin": "https://api.nova.amazon.com",
+            }
+
+            got_audio = False
+            chunk_count = 0
+            logger.info(
+                f"[{self.agent_id}] TTS connecting to Nova Sonic "
+                f"(voice={self.assigned_voice})"
+            )
+
+            async with websockets.connect(
+                url, ssl=ssl_context, additional_headers=headers
+            ) as ws:
+                event = _json.loads(
+                    await asyncio.wait_for(ws.recv(), timeout=10.0)
+                )
+                if event.get("type") != "session.created":
+                    logger.warning(
+                        f"[{self.agent_id}] Nova unexpected: {event.get('type')}"
+                    )
+                    return False
+
+                await ws.send(_json.dumps({
+                    "type": "session.update",
+                    "session": {
+                        "type": "realtime",
+                        "instructions": "Read the following text naturally.",
+                        "audio": {
+                            "output": {
+                                "voice": self.assigned_voice or "tiffany"
+                            }
+                        },
+                    },
+                }))
+                await asyncio.wait_for(ws.recv(), timeout=10.0)
+
+                await ws.send(_json.dumps({
+                    "type": "conversation.item.create",
+                    "item": {
+                        "type": "message",
+                        "role": "user",
+                        "content": [{"type": "input_text", "text": text}],
+                    },
+                }))
+
+                while True:
+                    try:
+                        raw = await asyncio.wait_for(ws.recv(), timeout=20.0)
+                        event = _json.loads(raw)
+                        etype = event.get("type", "")
+
+                        if etype == "response.output_audio.delta":
+                            audio_bytes = base64.b64decode(event["delta"])
+                            audio_b64 = base64.b64encode(audio_bytes).decode()
+                            chunk_count += 1
+                            await push_event_direct(
+                                self.session_id,
+                                "agent_audio_chunk",
+                                {
+                                    "agent_id": self.agent_id,
+                                    "audio_b64": audio_b64,
+                                    "sample_rate": 24000,
+                                    "channels": 1,
+                                    "bit_depth": 16,
+                                },
+                                source_agent_id=self.agent_id,
+                            )
+                            got_audio = True
+                        elif etype == "response.done":
+                            break
+                        elif etype == "error":
+                            logger.error(
+                                f"[{self.agent_id}] Nova TTS error: "
+                                f"{event.get('error', event)}"
+                            )
+                            break
+                    except asyncio.TimeoutError:
+                        logger.warning(f"[{self.agent_id}] Nova TTS receive timeout")
+                        break
+
+            logger.info(
+                f"[{self.agent_id}] Nova TTS complete: {chunk_count} audio chunks"
+            )
+            return got_audio
+
+        except Exception as e:
+            logger.error(f"[{self.agent_id}] Nova Sonic TTS FAILED: {e}")
+            return False
+
+    async def _stream_tts_gemini(self, text: str) -> bool:
+        """
+        TTS via Google Gemini Live API.
+        Uses google.genai client for audio-only generation.
+        """
+        from utils.events import push_event_direct
+        try:
+            from google import genai as _genai
+            from google.genai import types as _gtypes
+        except ImportError:
+            logger.warning(
+                f"[{self.agent_id}] google-genai not installed — TTS disabled"
+            )
+            return False
+
+        settings = get_settings()
+        if not settings.google_api_key:
+            logger.warning(f"[{self.agent_id}] No GOOGLE_API_KEY — TTS disabled")
+            return False
+
+        try:
+            client = _genai.Client(api_key=settings.google_api_key)
+            live_config = _gtypes.LiveConnectConfig(
+                response_modalities=["AUDIO"],
+                speech_config=_gtypes.SpeechConfig(
+                    voice_config=_gtypes.VoiceConfig(
+                        prebuilt_voice_config=_gtypes.PrebuiltVoiceConfig(
+                            voice_name=self.assigned_voice
+                        )
+                    )
+                ),
+            )
+            got_audio = False
+            chunk_count = 0
+            logger.info(
+                f"[{self.agent_id}] TTS connecting to Gemini Live "
+                f"(model={settings.gemini_realtime_model}, "
+                f"voice={self.assigned_voice})"
+            )
+            async with client.aio.live.connect(
+                model=settings.gemini_realtime_model,
+                config=live_config,
+            ) as session:
+                await session.send(input=text, end_of_turn=True)
+                async for response in session.receive():
+                    if response.data:
+                        audio_b64 = base64.b64encode(response.data).decode()
+                        chunk_count += 1
+                        await push_event_direct(
+                            self.session_id,
+                            "agent_audio_chunk",
+                            {
+                                "agent_id": self.agent_id,
+                                "audio_b64": audio_b64,
+                                "sample_rate": 24000,
+                                "channels": 1,
+                                "bit_depth": 16,
+                            },
+                            source_agent_id=self.agent_id,
+                        )
+                        got_audio = True
+                    turn_done = (
+                        response.server_content
+                        and getattr(response.server_content, "turn_complete", False)
+                    )
+                    if turn_done:
+                        break
+            logger.info(
+                f"[{self.agent_id}] Gemini TTS complete: "
+                f"{chunk_count} audio chunks streamed"
+            )
+            return got_audio
+        except Exception as e:
+            logger.error(f"[{self.agent_id}] Gemini Live TTS FAILED: {e}")
+            return False
 
     async def _generate_and_speak_reply(self, user_text: str, is_directive: bool = False) -> None:
         from utils.events import push_event, push_event_direct
@@ -668,72 +803,71 @@ class CrisisAgent:
                             await asyncio.sleep(0.5)
                     else:
                         acquired = await self.turn_manager.try_acquire_turn(self.agent_id)
-                        
+
                     if not acquired:
                         return
                     holding_turn = True
 
-                first_chunk = True
-                synthesis_ok = False
-                for attempt in range(1, 4):
-                    try:
-                        tts_stream = self._lk_tts.synthesize(reply_text) if self._lk_tts else None
-                        if not tts_stream:
-                            break
-                        async for ev in tts_stream:
-                            if first_chunk:
-                                await push_event(self.session_id, EVENT_AGENT_SPEAKING_START, {
-                                    "agent_id": self.agent_id,
-                                    "character_name": self.role_config.get("character_name", "Agent"),
-                                    "voice_name": self.assigned_voice,
-                                })
-                                await push_event(self.session_id, EVENT_AGENT_STATUS_CHANGE, {
-                                    "agent_id": self.agent_id,
-                                    "status": "speaking",
-                                    "previous_status": "thinking",
-                                })
-                                await self._update_roster_status("speaking", "thinking")
-                                await push_event_direct(
-                                    self.session_id,
-                                    EVENT_AGENT_SPEAKING_CHUNK,
-                                    {"agent_id": self.agent_id, "transcript_chunk": reply_text},
-                                    source_agent_id=self.agent_id,
-                                )
-                                first_chunk = False
+                await push_event(self.session_id, EVENT_AGENT_SPEAKING_START, {
+                    "agent_id": self.agent_id,
+                    "character_name": self.role_config.get("character_name", "Agent"),
+                    "voice_name": self.assigned_voice,
+                })
+                await push_event(self.session_id, EVENT_AGENT_STATUS_CHANGE, {
+                    "agent_id": self.agent_id,
+                    "status": "speaking",
+                    "previous_status": "thinking",
+                })
+                await self._update_roster_status("speaking", "thinking")
 
-                            if (
-                                allow_interruptions
-                                and self.turn_manager
-                                and self.turn_manager.should_yield(self.agent_id)
-                            ):
-                                await push_event(self.session_id, EVENT_AGENT_INTERRUPTED, {
-                                    "agent_id": self.agent_id,
-                                })
-                                await self._update_roster_status("listening", "speaking")
-                                break
-                            audio_b64 = base64.b64encode(ev.frame.data).decode()
-                            await push_event_direct(
-                                self.session_id,
-                                "agent_audio_chunk",
-                                {
-                                    "agent_id": self.agent_id,
-                                    "audio_b64": audio_b64,
-                                    "sample_rate": ev.frame.sample_rate,
-                                    "channels": ev.frame.num_channels,
-                                    "bit_depth": 16,
-                                },
-                                source_agent_id=self.agent_id,
-                            )
-                        synthesis_ok = True
+                # Always push the text transcript so the UI stays in sync.
+                await push_event_direct(
+                    self.session_id,
+                    EVENT_AGENT_SPEAKING_CHUNK,
+                    {"agent_id": self.agent_id, "transcript_chunk": reply_text},
+                    source_agent_id=self.agent_id,
+                )
+
+                # Stream TTS audio via Gemini Live API.
+                # Run with a timeout so a hung TTS connection never blocks the loop.
+                tts_task = asyncio.create_task(
+                    self._stream_tts_audio(reply_text),
+                    name=f"{self.agent_id}_tts",
+                )
+
+                # Word-count-based max speaking time as a hard ceiling
+                word_count = len(reply_text.split())
+                max_speak_secs = max(8.0, word_count * 0.55)
+                deadline = time.monotonic() + max_speak_secs
+                tts_done = False
+
+                while time.monotonic() < deadline:
+                    if (
+                        allow_interruptions
+                        and self.turn_manager
+                        and self.turn_manager.should_yield(self.agent_id)
+                    ):
+                        tts_task.cancel()
+                        await push_event(self.session_id, EVENT_AGENT_INTERRUPTED, {
+                            "agent_id": self.agent_id,
+                        })
+                        await self._update_roster_status("listening", "speaking")
                         break
-                    except Exception as e:
-                        logger.warning(
-                            f"[{self.agent_id}] ElevenLabs synth attempt {attempt}/3 failed: {e}"
-                        )
-                        await self._rebuild_livekit_tts()
-                        await asyncio.sleep(min(1.0 * attempt, 2.5))
-                if not synthesis_ok:
-                    logger.warning(f"[{self.agent_id}] ElevenLabs synthesis failed after retries")
+                    if tts_task.done():
+                        tts_done = True
+                        break
+                    await asyncio.sleep(0.15)
+
+                if not tts_task.done():
+                    # TTS is still running past the deadline — let it finish
+                    # in background but don't block the turn any longer.
+                    tts_task.cancel()
+                elif not tts_done:
+                    pass  # interrupted
+
+                # Small buffer after TTS completes for audio to finish playing
+                if tts_done:
+                    await asyncio.sleep(0.5)
 
                 await push_event(self.session_id, EVENT_AGENT_SPEAKING_END, {
                     "agent_id": self.agent_id,
@@ -834,7 +968,7 @@ class CrisisAgent:
     async def receive_chairman_audio(self, pcm_bytes: bytes) -> None:
         """
         Called by VoiceRouter when Chairman targets this agent (or full room).
-        Per voice.md §1.6 — puts into audio_in_queue, consumed by _send_audio_to_gemini.
+        Per voice.md §1.6 — puts into audio_in_queue, consumed by _voice_loop.
 
         ISOLATION: Only called for the intended agent. VoiceRouter enforces this.
         """
@@ -850,7 +984,7 @@ class CrisisAgent:
     async def send_text(self, text: str) -> None:
         """
         Send text to the agent's voice loop queue.
-        For livekit_elevenlabs mode this queues to text_in_queue.
+        Queues to text_in_queue for processing by the voice loop.
         """
         await self.text_in_queue.put(text)
 
@@ -965,25 +1099,12 @@ class CrisisAgent:
         # Mark live session as closed
         self.live_session = None
 
-        if self._lk_stt:
+        if self._nova_sonic_model:
             try:
-                await self._lk_stt.aclose()
+                await self._nova_sonic_model.aclose()
             except Exception:
                 pass
-            self._lk_stt = None
-
-        if self._lk_tts:
-            try:
-                await self._lk_tts.aclose()
-            except Exception:
-                pass
-            self._lk_tts = None
-        if self._lk_http_session and not self._lk_http_session.closed:
-            try:
-                await self._lk_http_session.close()
-            except Exception:
-                pass
-            self._lk_http_session = None
+            self._nova_sonic_model = None
 
         try:
             await self.memory_ref.update({"voice_session_active": False})

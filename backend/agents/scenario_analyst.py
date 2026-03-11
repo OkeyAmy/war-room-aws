@@ -3,7 +3,7 @@ WAR ROOM — Scenario Analyst Agent
 Runs ONCE at session start. Analyzes the crisis input and outputs
 a complete ScenarioSpec JSON that initializes the entire crisis team.
 
-Uses Z.AI GLM-5 via OpenAI-compatible SDK.
+Uses Amazon Nova 2 Lite via OpenAI-compatible SDK.
 """
 
 from __future__ import annotations
@@ -85,7 +85,7 @@ Rules:
 - The hidden_knowledge for each agent must eventually become relevant.
 - At least 2 agents must have conflict_with entries pointing at each other.
 - escalation_schedule must have exactly 3 events spaced across the session.
-- voice_style guides which ElevenLabs voices to assign. Each agent MUST have a different voice_style.
+- voice_style guides which Nova Sonic voices to assign. Each agent MUST have a different voice_style.
 - Each agent must have expertise_domains, communication_style, hidden_tension,
   emotional_temperature, initial_position, and blind_spot filled in.
 - Generate 2-4 required_documents — real deliverables that must be drafted during the session.
@@ -94,18 +94,165 @@ Rules:
   - accepts both spoken and typed chairman input
   - handles interruptions naturally
   - can introduce itself in one short opening turn
-- Output ONLY the JSON object. No explanatory text.
+- Output ONLY one RFC 8259 valid JSON object. No explanatory text.
+- Do not wrap the output in Markdown code fences.
+- Do not include comments, trailing commas, or ellipses.
+- Escape every double quote inside string values.
+- Do not place raw line breaks inside JSON strings; use plain sentences or escaped \\n.
+- Before finalizing, self-check that the result can be parsed by a strict JSON parser.
+"""
+
+STRICT_SCENARIO_RETRY_INSTRUCTION = """
+Return ONE valid JSON object that matches the WAR ROOM ScenarioSpec schema.
+
+Requirements:
+- Output JSON only. No prose, no Markdown, no code fences.
+- Use strict JSON syntax only.
+- Ensure every string is closed and properly escaped.
+- Do not include trailing commas.
+- Preserve the crisis facts and intent from the input.
 """
 
 
-def _get_zai_client():
-    """Return a configured OpenAI client pointing at Z.AI."""
-    from openai import OpenAI
-    settings = get_settings()
-    return OpenAI(
-        api_key=settings.zai_api_key,
-        base_url=settings.zai_base_url,
+def _extract_json_object(raw: str) -> str:
+    """Extract the first top-level JSON object from a model response."""
+    cleaned = (raw or "").strip()
+    if cleaned.startswith("```json"):
+        cleaned = cleaned[7:]
+    elif cleaned.startswith("```"):
+        cleaned = cleaned[3:]
+    if cleaned.endswith("```"):
+        cleaned = cleaned[:-3]
+    cleaned = cleaned.strip()
+
+    start = cleaned.find("{")
+    if start == -1:
+        return cleaned
+
+    depth = 0
+    in_string = False
+    escaped = False
+    for idx, char in enumerate(cleaned[start:], start=start):
+        if in_string:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == '"':
+                in_string = False
+            continue
+
+        if char == '"':
+            in_string = True
+        elif char == "{":
+            depth += 1
+        elif char == "}":
+            depth -= 1
+            if depth == 0:
+                return cleaned[start : idx + 1]
+
+    return cleaned[start:]
+
+
+def _repair_json(text: str) -> str:
+    """
+    Light-touch repair for common LLM JSON defects:
+    - Trailing commas before ] or }
+    - Unescaped lone backslashes outside strings
+    - Truncated JSON: append closing braces/brackets to balance depth
+    """
+    import re
+
+    # 1. Remove trailing commas before closing bracket/brace
+    text = re.sub(r",\s*([\]}])", r"\1", text)
+
+    # 2. Balance depth by counting braces/brackets outside strings
+    depth_brace = 0
+    depth_bracket = 0
+    in_str = False
+    escaped = False
+    for ch in text:
+        if escaped:
+            escaped = False
+            continue
+        if ch == "\\" and in_str:
+            escaped = True
+            continue
+        if ch == '"':
+            in_str = not in_str
+            continue
+        if in_str:
+            continue
+        if ch == "{":
+            depth_brace += 1
+        elif ch == "}":
+            depth_brace -= 1
+        elif ch == "[":
+            depth_bracket += 1
+        elif ch == "]":
+            depth_bracket -= 1
+
+    # If truncated, close open strings/brackets/braces
+    if in_str:
+        text += '"'
+    for _ in range(max(0, depth_bracket)):
+        text += "]"
+    for _ in range(max(0, depth_brace)):
+        text += "}"
+    return text
+
+
+def _parse_scenario_json(raw: str) -> dict:
+    """Parse the model response into a validated ScenarioSpec dict."""
+    candidate = _extract_json_object(raw)
+    try:
+        scenario = json.loads(candidate)
+    except json.JSONDecodeError:
+        # Attempt light repair before giving up
+        repaired = _repair_json(candidate)
+        scenario = json.loads(repaired)
+    return ScenarioSpec(**scenario).model_dump()
+
+
+async def _retry_with_strict_prompt(
+    crisis_input: str,
+    uploaded_section: str,
+) -> dict:
+    """Retry scenario generation with a lower-variance strict JSON prompt."""
+    from utils.model_provider import run_text_llm
+
+    system_prompt = "\n\n".join(
+        section for section in [
+            STRICT_SCENARIO_RETRY_INSTRUCTION.strip(),
+            SCENARIO_ANALYST_INSTRUCTION.format(
+                crisis_input=crisis_input,
+                uploaded_context_section=uploaded_section,
+            ).strip(),
+        ]
+        if section
     )
+
+    response = await run_text_llm(
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {
+                "role": "user",
+                "content": (
+                    "Generate the full ScenarioSpec now. "
+                    "Return only strict JSON that parses successfully."
+                ),
+            },
+        ],
+        model_type="scenario",
+        call_timeout=70.0,
+        temperature=0.2,
+        max_tokens=8192,
+        response_format={"type": "json_object"},
+    )
+
+    content = response.choices[0].message.content or ""
+    return _parse_scenario_json(content)
+
 
 
 async def run_scenario_analyst(
@@ -133,27 +280,27 @@ async def run_scenario_analyst(
     if uploaded_context:
         uploaded_section = f"UPLOADED DOCUMENT CONTEXT:\n{uploaded_context}"
 
-    if not settings.zai_api_key:
-        logger.warning("ZAI_API_KEY not set — returning mock scenario")
+    from utils.model_provider import run_text_llm, get_active_provider
+
+    if not settings.nova_api_key and not settings.google_api_key:
+        logger.warning("No LLM API key set — returning mock scenario")
         return _generate_mock_scenario(crisis_input, session_id)
 
     try:
-        client = _get_zai_client()
-
         system_prompt = SCENARIO_ANALYST_INSTRUCTION.format(
             crisis_input=crisis_input,
             uploaded_context_section=uploaded_section,
         )
 
-        response = await asyncio.to_thread(
-            client.chat.completions.create,
-            model=settings.zai_scenario_model,
+        response = await run_text_llm(
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"Analyze this crisis and return the full scenario JSON: {crisis_input}"},
             ],
-            temperature=0.85,
-            max_tokens=4000,
+            model_type="scenario",
+            call_timeout=70.0,
+            temperature=0.35,
+            max_tokens=8192,
             response_format={"type": "json_object"},
         )
 
@@ -162,8 +309,20 @@ async def run_scenario_analyst(
             logger.warning("Scenario Analyst returned empty response — using mock")
             return _generate_mock_scenario(crisis_input, session_id)
 
-        scenario = json.loads(content)
-        logger.info(f"Scenario Analyst produced: {scenario.get('crisis_title', 'Unknown')}")
+        try:
+            scenario = _parse_scenario_json(content)
+        except Exception as parse_error:
+            logger.warning(
+                "Scenario Analyst returned invalid JSON (%s) — retrying with strict prompt",
+                parse_error,
+            )
+            scenario = await _retry_with_strict_prompt(crisis_input, uploaded_section)
+
+        provider = get_active_provider()
+        logger.info(
+            f"Scenario Analyst produced: {scenario.get('crisis_title', 'Unknown')} "
+            f"(provider={provider})"
+        )
         return scenario
 
     except Exception as e:
@@ -174,7 +333,7 @@ async def run_scenario_analyst(
 def _generate_mock_scenario(crisis_input: str, session_id: str) -> dict:
     """
     Generate a mock scenario for local development/testing
-    when Z.AI is not available.
+    when Amazon Nova API is not available.
     MULTI-AGENT: expanded from 1 agent to 4 independent agents.
     v2.0: enriched agent profiles + required_documents.
     """

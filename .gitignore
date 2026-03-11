@@ -42,5 +42,12 @@ project/
 
 demo/
 
+# TestSprite
+.testsprite/
+**/testsprite_tests/tmp/
+
+# Demos & Presentations
+pitch/
+
 # env
 .env*

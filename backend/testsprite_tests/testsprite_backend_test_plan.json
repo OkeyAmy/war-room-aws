@@ -1,0 +1,32 @@
+[
+  {
+    "id": "TC001",
+    "title": "post api sessions create new crisis session",
+    "description": "Test creating a new crisis session with valid input data and verify the response contains session_id, chairman_token, and ws_url with status 201."
+  },
+  {
+    "id": "TC002",
+    "title": "get api sessions sessionid get session state",
+    "description": "Test retrieving the full session state for a valid session_id with proper authorization and verify the response includes status, timer, and agent_count with status 200."
+  },
+  {
+    "id": "TC003",
+    "title": "patch api sessions sessionid update session settings",
+    "description": "Test updating session settings such as pausing the session with valid authorization and verify the response includes updated fields and current state with status 200. Also verify that the WebSocket receives the session_paused event."
+  },
+  {
+    "id": "TC004",
+    "title": "delete api sessions sessionid end crisis session",
+    "description": "Test ending a crisis session by deleting it with valid authorization and verify the response includes closed_at and agents_released. Confirm that subsequent GET requests with the same token return 403 or 404."
+  },
+  {
+    "id": "TC005",
+    "title": "get api health comprehensive health check",
+    "description": "Test the health check endpoint to ensure it returns comprehensive system health information with status 200 without requiring authorization."
+  },
+  {
+    "id": "TC006",
+    "title": "get api voices list available voice configurations",
+    "description": "Test retrieving the list of available voice configurations from the endpoint and verify the response contains the expected voice data with status 200 without requiring authorization."
+  }
+]

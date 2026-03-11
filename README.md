@@ -21,7 +21,7 @@ graph TD
     GW <-->|Audio/Commands| CH[Chairman Handler]
     CH <-->|WebRTC/Sockets| VP[LiveKit Voice Pipeline]
     VP <-->|ElevenLabs STT/TTS| AI[Agent Array]
-    AI <-->|OpenAI SDK| ZAI[Z.AI GLM Models]
+    AI <-->|OpenAI SDK| ZAI[AI Models]
     
     subgraph "AI Agent Array (Cloud Run)"
         SA[Scenario Analyst]
@@ -106,7 +106,7 @@ sequenceDiagram
     Note over F,A: 3. Audio & Voice Pipeline
     F->>GW: Chairman Mic Audio
     GW->>A: LiveKit STT (ElevenLabs)
-    A->>ZAI: Prompt Z.AI GLM
+    A->>ZAI: Prompt AI model
     ZAI-->>A: Text Response
     A->>GW: LiveKit TTS (ElevenLabs)
     GW-->>F: Voice Audio + Active Speaker Sync
@@ -136,7 +136,7 @@ Because crisis agents (e.g., Legal, PR, Military) and the "World Agent" act auto
 The most complex interaction layer, designed to handle bidirectional voice streams between the user and the AI array using LiveKit and ElevenLabs.
 
 * **Client-to-Server:** The Next.js frontend captures the Chairman's microphone hardware, encodes the audio, and streams it via WebSocket directly to the `chairman_audio_ws.py` router on the backend.
-* **Backend Transcription & Routing:** The backend receives the chunked audio, pipes it to ElevenLabs for STT (Speech-to-Text). The transcript is then sent to the Z.AI GLM API for intent reasoning, determining *which* AI agent should react, and triggering their specific logic loop.
+* **Backend Transcription & Routing:** The backend receives the chunked audio, pipes it to ElevenLabs for STT (Speech-to-Text). The transcript is then sent to the AI model API for intent reasoning, determining *which* AI agent should react, and triggering their specific logic loop.
 * **Server-to-Client Audio:** Once an agent determines their response, the text is synthesized into ultra-realistic speech using ElevenLabs TTS. This generated audio is then piped back to the frontend (either via LiveKit rooms or direct binary WebSocket chunks).
 * **Active Speaker Gating:** To prevent chaotic "voice leakage" where multiple AIs talk simultaneously, the architecture enforces strict turn-based speaking locks. The backend emits active-speaker tokens, ensuring the frontend's audio player drops chunk overlaps and mutes inactive components.
 
@@ -153,9 +153,8 @@ The most complex interaction layer, designed to handle bidirectional voice strea
 ### The Backend (FastAPI + AI Agents)
 
 * **`/backend/main.py` & `/gateway`:** REST/WS controllers routing traffic into the simulation.
-* **`/backend/agents`:** Isolated Python classes inheriting from a `BaseCrisisAgent`. Each agent maintains its own localized prompt memory and connects to Z.AI GLM via the OpenAI SDK independently to reason about incoming inputs.
+* **`/backend/agents`:** Isolated Python classes inheriting from a `BaseCrisisAgent`. Each agent maintains its own localized prompt memory and connects to the AI model via the OpenAI SDK independently to reason about incoming inputs.
 * **State Store (Firestore/Mock Database):** The centralized ledger mapping the state of the session, agent decisions, and historical actions, allowing for immediate session recovery and performance observability.
-
 
 The WAR ROOM application enforces a strictly isolated memory architecture for each agent, mitigating hallucinations and ensuring specialized domain focus.
 
@@ -198,6 +197,17 @@ graph LR
 
 ---
 
+## 🧪 Testing & Quality Assurance
+
+WAR ROOM leverages **TestSprite AI** for comprehensive, agent-driven automated testing across its decoupled architecture, ensuring resilience in session state management and realtime streaming.
+
+* **[Backend Test Reports](./backend/testsprite_tests/)**: Validates the FastAPI gateway, session bootstrapper, and AI memory isolation. (See the [Detailed Backend Report](./backend/testsprite_tests/testsprite-mcp-test-report.md)).
+* **[Frontend Test Suite](./testsprite_tests/)**: Validates the React client's UI reactivity, WebSocket event parsing, and WebRTC streaming buffers.
+
+Click the links above to navigate to the respective testing artifact directories.
+
+---
+
 ## 🚀 Getting Started
 
 To run the full stack locally for development:
@@ -206,7 +216,7 @@ To run the full stack locally for development:
 
 * Node.js (v18+)
 * Python 3.10+
-* Requested API Keys (Z.AI/FlockAI, ElevenLabs, LiveKit) specified in `./backend/.env`
+* Requested API Keys (AI model, ElevenLabs, LiveKit) specified in `./backend/.env`
 
 ### Run the Backend
 

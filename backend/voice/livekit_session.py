@@ -32,10 +32,9 @@ def build_scenario_instruction_guide(
         "2) Produce ScenarioSpec JSON (title, brief, threats, intel, conflicts).\n"
         "3) Create four active speaking agents, each in an independent LiveKit pod.\n"
         "4) Generate SKILL instructions for each agent.\n"
-        "5) Build LiveKit AgentSession parameters with STT-LLM-TTS pipeline:\n"
-        "   - STT provider: ElevenLabs (scribe_v2_realtime)\n"
-        "   - LLM provider: Gemini text model\n"
-        "   - TTS provider: ElevenLabs\n"
+        "5) Build LiveKit AgentSession parameters with Amazon Nova stack:\n"
+        "   - Voice: Amazon Nova Sonic 2.0 (speech-to-speech via LiveKit AWS plugin)\n"
+        "   - Text LLM: Amazon Nova 2 Lite\n"
         "6) Enable multimodality (audio + text + transcriptions).\n"
         "7) Enable turn detection and chairman interruption routing.\n"
         "8) Set allow_interruptions=true for natural barge-in behavior.\n"
@@ -73,10 +72,10 @@ def build_livekit_agent_session_config(
         },
         "runtime": "livekit_agents",
         "pipeline": {
-            "mode": "stt-llm-tts",
-            "stt": f"elevenlabs/{stt_model}",
-            "llm": f"google/{text_model}",
-            "tts": f"elevenlabs/{tts_model}:{assigned_voice}",
+            "mode": "realtime-voice",
+            "voice_model": "aws/nova-2-sonic-v1:0",
+            "text_llm": f"nova/{text_model}",
+            "voice_id": assigned_voice,
         },
         "multimodality": {
             "audio_input": True,
@@ -109,12 +108,8 @@ def build_livekit_agent_session_config(
             "sync_transcription": True,
         },
         "startup": {
-            "introduce_on_join": True,
+            "introduce_on_join": False,
             "intro_delay_seconds": 1.2,
-            "intro_message": (
-                f"I am {character_name}, {role_title}. "
-                "I am online and ready. Share the immediate crisis objective."
-            ),
         },
         "instruction_sources": {
             "skill_md_chars": len(skill_md),

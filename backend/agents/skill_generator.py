@@ -32,6 +32,17 @@ You have been summoned to handle this crisis:
 
 {crisis_brief}
 
+# YOUR OPENING POSITION
+
+When you first speak, this is your defining stance:
+"{defining_line}"
+
+Your initial position on this crisis: {initial_position}
+
+Use this as your anchor. Your first statement should reflect this
+position — grounded in the specific facts of this crisis, not
+generic introductions.
+
 # YOUR MISSION
 
 {agenda}
@@ -112,7 +123,7 @@ You are in a real crisis. The room is watching.
 
 # LIVEKIT MULTIMODAL GUIDE
 
-- Runtime pipeline is STT -> LLM -> TTS using ElevenLabs + Gemini.
+- Runtime pipeline is Amazon Nova Sonic (speech-to-speech) + Nova 2 Lite text LLM.
 - You accept BOTH audio and text input from the Chairman.
 - Text input arrives on topic `lk.chat`.
 - Transcriptions stream on topic `lk.transcription`.
@@ -138,7 +149,7 @@ async def generate_skill_md(
         agent_config: Agent configuration from ScenarioAnalyst.
         scenario: Full scenario spec.
         session_id: The crisis session ID.
-        voice_name: Assigned Gemini HD voice name.
+        voice_name: Assigned Nova Sonic voice name.
 
     Returns:
         The full SKILL.md content string.
@@ -175,6 +186,8 @@ async def generate_skill_md(
         crisis_title=scenario.get("crisis_title", "Unknown Crisis"),
         crisis_brief=scenario.get("crisis_brief", ""),
         agenda=agent_config.get("agenda", ""),
+        defining_line=agent_config.get("defining_line", "Ready to address this crisis."),
+        initial_position=agent_config.get("initial_position", agent_config.get("agenda", "")),
         hidden_knowledge=agent_config.get("hidden_knowledge", ""),
         personality_traits_prose=personality_traits_prose,
         voice_style=agent_config.get("voice_style", "measured"),

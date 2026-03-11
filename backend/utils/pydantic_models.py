@@ -297,6 +297,8 @@ class SessionStateResponse(BaseModel):
     timer: Optional[TimerInfo] = None
     chairman_name: str = "DIRECTOR"
     agent_count: int = 0
+    # Indicates whether the scenario bootstrapper has completed preparing the session.
+    scenario_ready: bool = False
 
 
 class PatchSessionRequest(BaseModel):

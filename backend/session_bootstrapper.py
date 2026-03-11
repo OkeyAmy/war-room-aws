@@ -4,7 +4,7 @@ Called as a background task after POST /api/sessions.
 The initial Firestore document already exists; this function runs
 the Scenario Analyst, assembles agents, and transitions the session
 from "assembling" → "briefing" → ready.
-Uses Z.AI GLM via OpenAI SDK for all LLM calls.
+Uses Amazon Nova via OpenAI-compatible SDK for all LLM calls.
 """
 
 from __future__ import annotations
@@ -200,10 +200,9 @@ async def bootstrap_session(
             crisis_brief=scenario.get("crisis_brief", ""),
         ),
         "voice_runtime": {
-            # MULTI-AGENT: changed mode from single_active_agent to multi_agent_pods
             "mode": "multi_agent_pods",
-            "backend": "livekit_elevenlabs",
-            "pipeline": "stt-llm-tts",
+            "backend": "livekit_aws",
+            "pipeline": "realtime-voice",
             "multimodality": {
                 "audio_input": True,
                 "audio_output": True,
@@ -212,9 +211,8 @@ async def bootstrap_session(
                 "transcriptions": True,
             },
             "providers": {
-                "stt": "elevenlabs",
-                "llm": "zai_glm",
-                "tts": "elevenlabs",
+                "voice_model": "nova-2-sonic-v1",
+                "text_llm": "nova-2-lite-v1",
             },
             "turn_detection": {
                 "enabled": True,
@@ -309,9 +307,9 @@ async def bootstrap_session(
             role_title=agent_config["role_title"],
             assigned_voice=voice,
             skill_md=skill_md,
-            text_model=settings.zai_agent_model,
-            stt_model=settings.elevenlabs_stt_model,
-            tts_model=settings.elevenlabs_tts_model,
+            text_model=settings.nova_agent_model,
+            stt_model="nova-2-sonic-v1",
+            tts_model="nova-2-sonic-v1",
             crisis_brief=scenario.get("crisis_brief", ""),
             allow_interruptions=True,
         )
@@ -538,67 +536,13 @@ async def bootstrap_session(
         "agent_count": len(roster_entries),
     })
 
-    # Step 11: Kick-start the briefing round.
-    # Each agent's persistent _receive_from_gemini loop is already running.
-    # We just need to send them the initial crisis brief to trigger speech.
-    crisis_brief = scenario.get(
-        "crisis_brief",
-        scenario.get("crisis_title", "Unknown crisis"),
-    )
-
-    async def _kick_start_briefing():
-        """
-        Send opening brief to each agent SEQUENTIALLY.
-        Uses the TurnManager so each agent finishes speaking before the
-        next one begins — no more overlapping opening briefs.
-        """
-        tm = get_turn_manager(session_id)
-        await asyncio.sleep(2)  # Wait for WS connections to establish
-        ordered = list(agent_instances.items())
-        # MULTI-AGENT: commented out single-voice filter — all agents get the briefing
-        # if single_voice_mode:
-        #     # Only kick the selected active voice pod in single-agent mode.
-        #     active_id = f"{single_voice_target}_{session_id}" if single_voice_target else f"{default_first_role}_{session_id}"
-        #     ordered = [(k, a) for k, a in ordered if a.agent_id == active_id] or ordered[:1]
-
-        for role_key, agent in ordered:
-            char = agent.role_config.get("character_name", role_key)
-            title = agent.role_config.get("role_title", "Advisor")
-            briefing = (
-                f"You are in a live crisis war room. The situation is:\n\n"
-                f"{crisis_brief}\n\n"
-                f"You are {char}, the {title}. "
-                f"This is the opening round. Briefly introduce yourself and give "
-                f"your immediate assessment of the crisis. "
-                f"Keep it to 2-3 sentences. Speak naturally and in character."
-            )
-            try:
-                await agent.send_text(briefing)
-            except Exception as e:
-                logger.warning(f"Failed to send briefing to {role_key}: {e}")
-
-            # Wait for the agent to finish speaking before moving to the next.
-            # The TurnManager lock will be acquired by the livekit voice loop
-            # when the agent starts speaking, and released when done.
-            # We poll until the floor is free (max 20s per agent).
-            for _ in range(40):
-                await asyncio.sleep(0.5)
-                if tm.is_floor_free():
-                    break
-            # Extra buffer between agents
-            await asyncio.sleep(1)
-
-    # MULTI-AGENT: always schedule the kick-start briefing for all agents
-    # if not single_voice_mode:
-    asyncio.create_task(_kick_start_briefing())
+    # Introductions are handled by the discussion loop's INTRO phase
+    # which injects full crisis context (defining_line, agenda, crisis_brief)
+    # into each agent's opening statement. No separate kick-start needed.
     logger.info(
         f"Session {session_id} ready: {len(roster_entries)} agents, "
-        f"'{scenario.get('crisis_title', 'Unknown')}' — kick-start briefing scheduled"
+        f"'{scenario.get('crisis_title', 'Unknown')}' — "
+        f"discussion loop handling scenario-grounded introductions"
     )
-    # else:
-    #     logger.info(
-    #         f"Session {session_id} ready: {len(roster_entries)} agents, "
-    #         f"'{scenario.get('crisis_title', 'Unknown')}' — waiting for chairman input"
-    #     )
 
     return session_id

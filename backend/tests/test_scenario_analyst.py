@@ -114,6 +114,135 @@ class TestScenarioAnalystMock:
         assert 30 <= score <= 70, f"Score {score} out of range [30, 70]"
 
 
+class TestScenarioAnalystParsing:
+    """Tests for strict JSON extraction and retry-safe parsing."""
+
+    def test_parse_scenario_json_extracts_code_fenced_payload(self):
+        from agents.scenario_analyst import _parse_scenario_json
+
+        raw = """```json
+{
+  "crisis_title": "Cyber Breach",
+  "crisis_domain": "corporate",
+  "crisis_brief": "A severe cyber incident is unfolding.",
+  "threat_level_initial": "critical",
+  "resolution_score_initial": 45,
+  "agents": [
+    {
+      "role_key": "legal",
+      "role_title": "General Counsel",
+      "character_name": "Elena Voss",
+      "defining_line": "We need to control legal exposure now.",
+      "agenda": "Contain regulatory liability.",
+      "hidden_knowledge": "A prior audit flagged the same issue.",
+      "personality_traits": ["precise", "guarded", "strategic"],
+      "conflict_with": ["pr"],
+      "voice_style": "measured",
+      "identity_color": "#224488",
+      "expertise_domains": ["regulation", "privacy"],
+      "communication_style": "Short, formal, exact.",
+      "hidden_tension": "She knows leadership ignored her memo.",
+      "emotional_temperature": "Cold urgency.",
+      "initial_position": "Notify regulators quickly.",
+      "blind_spot": "Underweights reputational damage.",
+      "documents_responsible": ["Regulatory Notice"]
+    },
+    {
+      "role_key": "pr",
+      "role_title": "Communications Director",
+      "character_name": "Maya Cole",
+      "defining_line": "Silence is already costing us.",
+      "agenda": "Protect public trust.",
+      "hidden_knowledge": "A journalist already has leaked screenshots.",
+      "personality_traits": ["fast", "polished", "assertive"],
+      "conflict_with": ["legal"],
+      "voice_style": "warm",
+      "identity_color": "#AA5500",
+      "expertise_domains": ["media", "reputation"],
+      "communication_style": "Narrative-driven and concise.",
+      "hidden_tension": "She fears leadership will freeze and lose the story.",
+      "emotional_temperature": "High pressure.",
+      "initial_position": "Publish a holding statement immediately.",
+      "blind_spot": "Can move faster than the facts.",
+      "documents_responsible": ["Customer Notice"]
+    },
+    {
+      "role_key": "engineer",
+      "role_title": "CTO",
+      "character_name": "Nikhil Rao",
+      "defining_line": "We need facts before promises.",
+      "agenda": "Stabilize systems and isolate blast radius.",
+      "hidden_knowledge": "The vulnerable service stayed unpatched for weeks.",
+      "personality_traits": ["direct", "technical", "controlled"],
+      "conflict_with": ["ops"],
+      "voice_style": "clipped",
+      "identity_color": "#117744",
+      "expertise_domains": ["infrastructure", "incident response"],
+      "communication_style": "Dense, factual, technical.",
+      "hidden_tension": "He approved the delay.",
+      "emotional_temperature": "Tense but controlled.",
+      "initial_position": "Containment before disclosure.",
+      "blind_spot": "Underestimates stakeholder anxiety.",
+      "documents_responsible": ["Incident Report"]
+    },
+    {
+      "role_key": "ops",
+      "role_title": "COO",
+      "character_name": "Dana Brooks",
+      "defining_line": "Downtime is bleeding us by the minute.",
+      "agenda": "Restore operations fast.",
+      "hidden_knowledge": "Failover readiness is overstated.",
+      "personality_traits": ["decisive", "blunt", "restless"],
+      "conflict_with": ["engineer"],
+      "voice_style": "urgent",
+      "identity_color": "#BB2222",
+      "expertise_domains": ["operations", "continuity"],
+      "communication_style": "Action-first and terse.",
+      "hidden_tension": "Recovery drills were deferred under her watch.",
+      "emotional_temperature": "Hot urgency.",
+      "initial_position": "Fail over now.",
+      "blind_spot": "Downplays compliance process.",
+      "documents_responsible": ["Exec Briefing"]
+    }
+  ],
+  "initial_intel": [{"text": "Customer portal instability is spreading.", "source": "INTERNAL"}],
+  "initial_conflicts": [{"description": "Legal and PR split on disclosure timing.", "agents_involved": ["legal", "pr"]}],
+  "escalation_schedule": [
+    {"delay_minutes": 5, "event_text": "A reporter posts a leak teaser.", "type": "media"},
+    {"delay_minutes": 10, "event_text": "Regulators request an urgent update.", "type": "legal"},
+    {"delay_minutes": 18, "event_text": "Employees report internal confusion.", "type": "internal"}
+  ],
+  "required_documents": [
+    {"doc_id": "reg_notice", "title": "Regulatory Notice", "owner_agent_id": "legal", "deadline_hours": 72, "template_type": "regulatory_notification", "legal_framework": "GDPR Article 33"},
+    {"doc_id": "cust_notice", "title": "Customer Notice", "owner_agent_id": "pr", "deadline_hours": 24, "template_type": "customer_notification", "legal_framework": ""}
+  ]
+}
+```"""
+
+        parsed = _parse_scenario_json(raw)
+
+        assert parsed["crisis_title"] == "Cyber Breach"
+        assert len(parsed["agents"]) == 4
+
+
+class TestSettingsNormalization:
+    """Tests for config normalization of retired Gemini model IDs."""
+
+    def test_deprecated_gemini_flash_lite_is_upgraded(self, monkeypatch):
+        import config.settings as settings_module
+
+        settings_module.get_settings.cache_clear()
+        monkeypatch.setenv("GEMINI_AGENT_MODEL", "gemini-2.0-flash-lite")
+        monkeypatch.setenv("GEMINI_FAST_MODEL", "gemini-2.0-flash-lite")
+
+        settings = settings_module.get_settings()
+
+        assert settings.gemini_agent_model == "gemini-3-flash"
+        assert settings.gemini_fast_model == "gemini-3-flash"
+
+        settings_module.get_settings.cache_clear()
+
+
 class TestSkillGeneration:
     """Tests for SKILL.md generation."""
 
@@ -200,18 +329,19 @@ class TestLiveKitSessionConfig:
             agent_id="legal_ABC12345",
             character_name="Elena Vance",
             role_title="Chief Legal Officer",
-            assigned_voice="cgSgspJ2msm6clMCkdW9",
+            assigned_voice="tiffany",
             skill_md="# test skill",
-            text_model="gemini-3-flash-preview",
-            stt_model="scribe_v1",
-            tts_model="eleven_turbo_v2_5",
+            text_model="nova-2-lite-v1",
+            stt_model="nova-2-sonic-v1",
+            tts_model="nova-2-sonic-v1",
             crisis_brief="Test brief",
             allow_interruptions=True,
         )
 
-        assert cfg["pipeline"]["mode"] == "stt-llm-tts"
-        assert cfg["pipeline"]["stt"] == "elevenlabs/scribe_v1"
-        assert cfg["pipeline"]["tts"] == "elevenlabs/eleven_turbo_v2_5:cgSgspJ2msm6clMCkdW9"
+        assert cfg["pipeline"]["mode"] == "realtime-voice"
+        assert cfg["pipeline"]["voice_model"] == "aws/nova-2-sonic-v1:0"
+        assert cfg["pipeline"]["text_llm"] == "nova/nova-2-lite-v1"
+        assert cfg["pipeline"]["voice_id"] == "tiffany"
         assert cfg["multimodality"]["text_input"] is True
         assert cfg["voice_options"]["allow_interruptions"] is True
         assert cfg["turn_detection"]["enabled"] is True

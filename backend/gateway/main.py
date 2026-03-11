@@ -47,8 +47,14 @@ async def war_room_websocket(websocket: WebSocket, session_id: str):
                 event = await event_queue.get()
                 try:
                     await websocket.send_json(event)
+                except WebSocketDisconnect:
+                    break
                 except Exception as e:
-                    logger.error(f"Failed to forward event: {e}")
+                    msg = str(e)
+                    # Silently drop "send after close" errors — these are expected
+                    # when the client disconnects while events are still queued.
+                    if "websocket.send" not in msg and "already completed" not in msg:
+                        logger.error(f"Failed to forward event: {e}")
                     break
 
         async def receive_chairman():

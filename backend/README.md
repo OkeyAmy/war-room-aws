@@ -17,7 +17,7 @@ flowchart TD
     User([You / Decision Maker]) -->|Speaks or Types| Gateway[Control Center]
     Gateway -->|Relays Information| Coordinator[Session Coordinator]
     Coordinator -->|Assigns Task| Agents{Specialized AI Agents}
-    Agents -->|Think & Analyze| Brain[Z.AI Engine]
+    Agents -->|Think & Analyze| Brain[AI Model Engine]
     Brain -->|Provides Strategy| Agents
     Agents -->|Generate Speech| VoiceTool[Voice Synthesizer]
     VoiceTool -->|Spoken Response| User
@@ -29,7 +29,7 @@ flowchart TD
 * **The Decision Maker:** You interact with the system by speaking or typing.
 * **The Control Center (Gateway):** Receives your input and ensures the entire platform stays perfectly synced.
 * **The Coordinator:** Acts as the meeting manager, taking your input and directing it to the right expert on the team.
-* **Specialized AI Agents:** These are the unique personas in the room. They consult their "brain" (the Z.AI Engine) to analyze the problem and formulate strategies.
+* **Specialized AI Agents:** These are the unique personas in the room. They consult their "brain" (the AI model) to analyze the problem and formulate strategies.
 * **Voice Synthesizer:** Gives each agent a distinct, realistic voice so they can converse with you instantly.
 * **Record Keeper:** Safely stores every decision, transcript, and event so the team remembers exactly what has happened throughout the crisis.
 
@@ -37,10 +37,10 @@ flowchart TD
 
 * **Framework:** FastAPI (Python 3.10+) running on Uvicorn.
 * **AI Integration:**
-* **Z.AI GLM Models:** For text-based agent reasoning, multi-modal intake, and scenario generation. Accessed via the OpenAI Python SDK.
+* **AI Models:** For text-based agent reasoning, multi-modal intake, and scenario generation. Accessed via the OpenAI Python SDK.
 * **ElevenLabs:** For rapid STT (Speech-to-Text) transcription and ultra-realistic TTS (Text-to-Speech) voice synthesis.
 * **LiveKit:** For WebRTC audio distribution and management.
-* **Flock API (kimi-k2.5):** The project was also tested using the Flock API base model URL `https://api.flock.io/v1` with the `kimi-k2.5` model.
+* **AI Model API:** The project can be configured to use compatible AI model APIs.
 * **Database & Storage:** Google Cloud Firestore (production state management) with an in-memory mock adapter for local development and testing.
 
 ## System Architecture
@@ -75,8 +75,6 @@ The simulation is driven by distinct, specialized AI agents operating concurrent
 * Manages the complex orchestration of LiveKit sessions, OpenAI API LLM configurations, and ElevenLabs voice assignments (`voice_assignment.py` & `voice_routes.py`).
 * It ensures that distinct, consistent voices are mapped to generated agents, creating an immersive localized audio experience while enforcing a strict gate for speaker turns to prevent voice leakage.
 
-
-
 ## Data Flow & Lifecycle
 
 ```mermaid
@@ -86,7 +84,7 @@ sequenceDiagram
     participant CH as Chairman Handler
     participant LK as LiveKit & ElevenLabs
     participant AG as Crisis Agent
-    participant ZAI as Z.AI GLM Models
+    participant ZAI as AI Models
     participant DB as Firestore
     
     UI->>GW: POST /api/sessions (Init)
@@ -106,7 +104,7 @@ sequenceDiagram
 
 1. **Initialization:** The frontend requests a new session via POST `/api/sessions`. `main.py` writes an initial "assembling" state to Firestore and offloads heavy scenario generation to `session_bootstrapper.py` via background tasks.
 2. **Streaming:** The frontend establishes WebSocket connections.
-3. **Active Simulation:** The user speaks or sends directives. The `chairman_handler.py` processes this, invokes the necessary `CrisisAgent` instances, which then query context, compute responses via Z.AI GLM using OpenAI SDK, trigger TTS streaming via ElevenLabs, and broadcast the resulting audio/transcripts back through the WebSocket gateway.
+3. **Active Simulation:** The user speaks or sends directives. The `chairman_handler.py` processes this, invokes the necessary `CrisisAgent` instances, which then query context, compute responses via the AI model using OpenAI SDK, trigger TTS streaming via ElevenLabs, and broadcast the resulting audio/transcripts back through the WebSocket gateway.
 4. **Escalations:** Concurrently, the `WorldAgent` evaluates session time and injects new variables, pushing updates directly to event streams.
 5. **Resolution:** The session concludes, shutting down background AI tasks, releasing WebSocket links, and dumping actionable scenario history to the DB for after-action reports.
 

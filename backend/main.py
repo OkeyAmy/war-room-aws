@@ -63,16 +63,32 @@ async def lifespan(app: FastAPI):
     """Application lifespan — startup and shutdown hooks."""
     settings = get_settings()
     logger.info(f"WAR ROOM Backend starting (debug={settings.debug})")
-    logger.info(f"LLM: Z.AI agent_model={settings.zai_agent_model}, scenario_model={settings.zai_scenario_model}")
-    logger.info(f"Z.AI base_url={settings.zai_base_url}, api_key={'set' if settings.zai_api_key else 'missing'}")
+    logger.info(f"Nova base_url={settings.nova_base_url}, api_key={'set' if settings.nova_api_key else 'missing'}")
     logger.info(
         "Voice runtime config: "
         f"voice_backend={settings.voice_backend}, "
-        f"elevenlabs_stt={settings.elevenlabs_stt_model}, "
-        f"elevenlabs_tts={settings.elevenlabs_tts_model}, "
-        f"elevenlabs_key={'set' if bool(settings.elevenlabs_api_key) else 'missing'}, "
+        f"nova_sonic_voice={settings.nova_sonic_voice}, "
+        f"aws_key={'set' if bool(settings.aws_access_key_id) else 'missing'}, "
+        f"aws_region={settings.aws_region}, "
         f"livekit={'configured' if bool(settings.livekit_url and settings.livekit_api_key and settings.livekit_api_secret) else 'not_configured'}"
     )
+
+    # ── Provider startup check ────────────────────────────────────────────
+    # Validate AWS credentials. If invalid, Gemini fallback is activated
+    # and remains active for the entire process run.
+    from utils.model_provider import check_provider_on_startup
+    active_provider = await check_provider_on_startup()
+    if active_provider == "aws":
+        logger.info(
+            f"[PROVIDER] Active: AWS Nova "
+            f"(agent={settings.nova_agent_model}, scenario={settings.nova_scenario_model})"
+        )
+    else:
+        logger.info(
+            f"[PROVIDER] Active: Gemini fallback "
+            f"(agent={settings.gemini_agent_model}, realtime={settings.gemini_realtime_model})"
+        )
+
     yield
     logger.info("WAR ROOM Backend shutting down")
 
@@ -83,7 +99,7 @@ app = FastAPI(
     title="⚔️ WAR ROOM — Backend API",
     description=(
         "Multi-agent AI crisis simulation platform. "
-        "Powered by Z.AI GLM, LiveKit ElevenLabs, and Firestore."
+        "Powered by Amazon Nova, LiveKit Nova Sonic, and Firestore."
     ),
     version="2.0.0",
     lifespan=lifespan,
@@ -461,24 +477,21 @@ async def health_check():
     env = settings.environment
     checks: dict[str, dict] = {}
 
-    async def check_zai_text():
+    async def check_active_provider():
+        """Check current provider state and validate the active LLM."""
         try:
-            from openai import OpenAI
-            client = OpenAI(
-                api_key=settings.zai_api_key,
-                base_url=settings.zai_base_url,
-            )
-            if not settings.zai_api_key:
-                return {"status": "warn", "message": "ZAI_API_KEY not set — LLM calls will be skipped"}
-            response = client.chat.completions.create(
-                model=settings.zai_agent_model,
+            from utils.model_provider import get_active_provider, run_text_llm
+            provider = get_active_provider()
+            response = await run_text_llm(
                 messages=[{"role": "user", "content": "Respond with exactly: PING_OK"}],
+                model_type="agent",
                 max_tokens=10,
             )
             reply = (response.choices[0].message.content or "").strip()
             return {
                 "status": "pass",
-                "message": f"Z.AI GLM reachable ({settings.zai_agent_model}), reply: {reply[:30]}",
+                "provider": provider,
+                "message": f"Active provider={provider}, reply: {reply[:30]}",
             }
         except ImportError:
             return {"status": "warn", "message": "openai SDK not installed"}
@@ -620,7 +633,7 @@ async def health_check():
             return {"status": "fail", "message": str(e)}
 
     results = await asyncio.gather(
-        check_zai_text(),
+        check_active_provider(),
         check_database(),
         check_event_system(),
         check_agent_memory(),
@@ -635,7 +648,7 @@ async def health_check():
     )
 
     check_names = [
-        "zai_text_model",
+        "active_provider",
         "database",
         "event_system",
         "agent_memory",
@@ -665,11 +678,13 @@ async def health_check():
     failed = [k for k, v in checks.items() if v.get("status") == "fail"]
     passed = [k for k, v in checks.items() if v.get("status") == "pass"]
 
+    from utils.model_provider import get_active_provider
     return {
         "status": overall,
         "service": "war-room-backend",
         "version": "2.0.0",
         "environment": env,
+        "active_provider": get_active_provider(),
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "summary": {
             "total": len(checks),
@@ -684,10 +699,10 @@ async def health_check():
 @app.get(
     "/api/voices",
     tags=["System"],
-    summary="List available ElevenLabs voices",
+    summary="List available Nova Sonic voices",
 )
 async def list_voices():
-    """List available ElevenLabs voices with fallback."""
+    """List available voice configurations."""
     from utils.voice_discovery import discover_voices, get_voice_style_map
 
     voices = await discover_voices()
@@ -697,7 +712,7 @@ async def list_voices():
         "total": len(voices),
         "voices": voices,
         "by_style": style_map,
-        "source": "sdk" if voices else "hardcoded",
+        "source": "nova_sonic" if voices else "hardcoded",
     }
 
 

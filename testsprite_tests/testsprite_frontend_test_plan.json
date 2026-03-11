@@ -1,0 +1,2251 @@
+[
+  {
+    "id": "TC001",
+    "title": "Create a crisis session with required fields only (default callsign and duration)",
+    "description": "Verifies a user can submit a valid crisis description and reach the war room after the assembling phase using default settings.",
+    "category": "Create Crisis Session",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Describe your crisis. Anything. Real or fictional.\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Type \"A major cyberattack has shut down the national power grid; hospitals and water systems are failing.\" into the large crisis description textarea"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Chairman Callsign\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Assemble Team\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Assembling your crisis team...\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/war-room/\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Agents\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "Crisis text under 10 characters keeps Assemble Team disabled, then enables at 10+",
+    "description": "Verifies minimum length validation blocks submission until the crisis description reaches at least 10 characters.",
+    "category": "Create Crisis Session",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Too short\" into the large crisis description textarea"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Assemble Team\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Assemble Team\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Too short but now long enough\" into the large crisis description textarea"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Assemble Team\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Assembling your crisis team...\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Set a custom Chairman Callsign before assembling the team",
+    "description": "Verifies the chairman callsign can be changed from the default and the session still assembles and navigates to the war room.",
+    "category": "Create Crisis Session",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Type \"A fast-moving wildfire is approaching a major metropolitan area; evacuations are stalled and air quality is hazardous.\" into the large crisis description textarea"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Chairman Callsign\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"ALPHA\" into the \"Chairman Callsign\" field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Assemble Team\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Assembling your crisis team...\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/war-room/\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"ALPHA\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "Adjust Session Duration slider before assembling the team",
+    "description": "Verifies the session duration can be adjusted via the slider and the session still assembles successfully.",
+    "category": "Create Crisis Session",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Type \"A coastal city is under imminent threat from a tsunami after a major offshore earthquake; communications are intermittent.\" into the large crisis description textarea"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Session Duration\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the Session Duration slider track near the right side to increase the duration"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"minutes\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Assemble Team\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Assembling your crisis team...\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/war-room/\""
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "Optional intel upload is not required to assemble (skip upload)",
+    "description": "Verifies a user can assemble a session without uploading any intel and still reach the war room.",
+    "category": "Create Crisis Session",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Type \"A ransomware outbreak is spreading through municipal systems; emergency services dispatch is degraded and public safety is at risk.\" into the large crisis description textarea"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"intel\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Assemble Team\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Assembling your crisis team...\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/war-room/\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Crisis\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Form fields appear only after reaching the minimum crisis description length",
+    "description": "Verifies progressive disclosure: chairman callsign and duration controls appear only after 10+ characters in the crisis description.",
+    "category": "Create Crisis Session",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Chairman Callsign\" is not visible"
+      },
+      {
+        "type": "action",
+        "description": "Type \"123456789\" into the large crisis description textarea"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Chairman Callsign\" is not visible"
+      },
+      {
+        "type": "action",
+        "description": "Type \"0\" into the large crisis description textarea"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Chairman Callsign\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Session Duration\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "Submitting with whitespace-only or effectively empty text does not proceed",
+    "description": "Verifies the user cannot submit a session with non-meaningful input (e.g., spaces) and does not navigate away from the landing page.",
+    "category": "Create Crisis Session",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Type \"          \" into the large crisis description textarea"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Assemble Team\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Assemble Team\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Meaningful crisis text now provided.\" into the large crisis description textarea"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Assemble Team\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Assembling your crisis team...\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "View agent roster cards in AGENTS tab with required fields",
+    "description": "Verifies the left AGENTS panel shows agent cards with name, role, status, and trust score once the war room finishes assembling.",
+    "category": "War Room Agent Roster",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Regional power grid failure with civil unrest and misinformation\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Assembling\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"AGENTS\" tab is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"AGENTS\" tab"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Trust\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"%\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Open Agent Details Overlay from a roster card",
+    "description": "Verifies selecting an agent card opens the Agent Details Overlay.",
+    "category": "War Room Agent Roster",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Airport cyberattack causing flight delays and cascading supply chain issues\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"AGENTS\" tab"
+      },
+      {
+        "type": "action",
+        "description": "Wait for element \"Agent\" to be visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the first visible agent card in the roster list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Agent Details\" overlay is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Trust\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Agent Details Overlay shows identity and role information",
+    "description": "Verifies the Agent Details Overlay displays the selected agent's character name and role title.",
+    "category": "War Room Agent Roster",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Earthquake response with hospital overload and fuel shortages\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"AGENTS\" tab"
+      },
+      {
+        "type": "action",
+        "description": "Click the first visible agent card in the roster list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Agent Details\" overlay is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Role\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Trust\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Agent Details Overlay shows trust score as a percentage",
+    "description": "Verifies the trust score appears in the Agent Details Overlay in percent format.",
+    "category": "War Room Agent Roster",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Major water contamination incident affecting multiple cities\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"AGENTS\" tab"
+      },
+      {
+        "type": "action",
+        "description": "Click the first visible agent card in the roster list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Agent Details\" overlay is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"%\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Trust\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Agent Details Overlay shows public positions section",
+    "description": "Verifies the overlay includes a visible section for the agent's public positions/recent positions.",
+    "category": "War Room Agent Roster",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Coastal hurricane evacuation with shelter shortages and traffic gridlock\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"AGENTS\" tab"
+      },
+      {
+        "type": "action",
+        "description": "Click the first visible agent card in the roster list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Agent Details\" overlay is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Positions\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Public\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Roster supports progressive reveal during assembling",
+    "description": "Verifies that while assembling is in progress, the UI shows a loading/briefing state and agent roster content appears progressively when available.",
+    "category": "War Room Agent Roster",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Nationwide rail strike escalating into supply shortages and protests\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Assembling\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"AGENTS\" tab"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"agent placeholders\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Wait for element \"agent card\" to be visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"%\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Agent status label appears on roster (IDLE/SPEAKING/THINKING)",
+    "description": "Verifies the roster shows a visible status label for agents and that at least one of the expected status words appears.",
+    "category": "War Room Agent Roster",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Diplomatic crisis with rapid escalation and conflicting intelligence reports\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"AGENTS\" tab"
+      },
+      {
+        "type": "action",
+        "description": "Wait for element \"agent card\" to be visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"IDLE\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"SPEAKING\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"THINKING\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "Switching selected agent updates the Agent Details Overlay content",
+    "description": "Verifies clicking a different agent updates the overlay to show the newly selected agent's information.",
+    "category": "War Room Agent Roster",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Financial market shock with bank runs and coordinated disinformation\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"AGENTS\" tab"
+      },
+      {
+        "type": "action",
+        "description": "Click the first visible agent card in the roster list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Agent Details\" overlay is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click a different visible agent card in the roster list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Agent Details\" overlay is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Role\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Summon Agent: successfully generate a new agent and see it added to the roster",
+    "description": "Verifies a chairman can summon a new agent, observe the generating state, and eventually see the new agent in the agent roster.",
+    "category": "Summon Agent",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Crisis\" (or primary crisis description) text area with \"Regional power grid outage following coordinated cyberattack; need rapid incident response.\""
+      },
+      {
+        "type": "action",
+        "description": "Click the primary \"Create\" / \"Start\" / \"Enter War Room\" button on the landing page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"ASSEMBLING\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"+ SUMMON AGENT\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"+ SUMMON AGENT\" button at the bottom of the agent panel"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"SUMMON\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Cybersecurity Expert\" into the role description input field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"SUMMON\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"GENERATING...\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Cybersecurity Expert\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "Summon Agent: modal opens and can be cancelled without creating an agent",
+    "description": "Verifies the summon modal can be opened and dismissed, returning to the war room without generating an agent.",
+    "category": "Summon Agent",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Crisis\" (or primary crisis description) text area with \"Major flood event impacting multiple counties; coordinate rescue and logistics.\""
+      },
+      {
+        "type": "action",
+        "description": "Click the primary \"Create\" / \"Start\" / \"Enter War Room\" button on the landing page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"+ SUMMON AGENT\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"+ SUMMON AGENT\" button at the bottom of the agent panel"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Summon Agent\" modal is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Cancel\" button in the summon modal"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"+ SUMMON AGENT\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "Summon Agent: prevent summoning when role description is empty",
+    "description": "Verifies the user cannot submit the summon request with an empty role description and receives an inline validation message or disabled submit behavior.",
+    "category": "Summon Agent",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Crisis\" (or primary crisis description) text area with \"Airport systems outage affecting flights and security; need rapid coordination.\""
+      },
+      {
+        "type": "action",
+        "description": "Click the primary \"Create\" / \"Start\" / \"Enter War Room\" button on the landing page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"+ SUMMON AGENT\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"+ SUMMON AGENT\" button at the bottom of the agent panel"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Summon Agent\" modal is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"SUMMON\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Role description\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC019",
+    "title": "Summon Agent: long role description is accepted and does not break the modal UI",
+    "description": "Verifies a longer, detailed role description can be entered and submitted, showing the generating state (and eventual roster addition if it completes).",
+    "category": "Summon Agent",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Crisis\" (or primary crisis description) text area with \"Major wildfire approaching populated areas; coordinate response across agencies.\""
+      },
+      {
+        "type": "action",
+        "description": "Click the primary \"Create\" / \"Start\" / \"Enter War Room\" button on the landing page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"+ SUMMON AGENT\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"+ SUMMON AGENT\" button at the bottom of the agent panel"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Senior Incident Response Strategist specializing in multi-agency wildfire coordination, evacuation planning, and public safety communications\" into the role description input field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"SUMMON\" button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"GENERATING...\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC020",
+    "title": "End session successfully and exit back to landing page",
+    "description": "Verifies the chairman can end a session, see termination UI states, and exit to the landing page.",
+    "category": "End Session",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Test crisis for end-session happy path\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"ASSEMBLING\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"war room\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the red \"END SESSION\" button in the top command bar"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"CONFIRM? YES / NO\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click \"YES\" to confirm"
+      }
+    ]
+  },
+  {
+    "id": "TC021",
+    "title": "Termination overlay appears after confirming end session",
+    "description": "Verifies the terminating progress overlay is shown immediately after confirming session end.",
+    "category": "End Session",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Test crisis for termination overlay\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"war room\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the red \"END SESSION\" button in the top command bar"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"CONFIRM? YES / NO\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click \"YES\" to confirm"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"TERMINATING SESSION\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC022",
+    "title": "Exit Room from terminated modal returns to landing page",
+    "description": "Verifies the EXIT ROOM button on the SESSION TERMINATED modal returns the user to the landing page.",
+    "category": "End Session",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Test crisis for exit room\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"war room\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the red \"END SESSION\" button in the top command bar"
+      },
+      {
+        "type": "action",
+        "description": "Click \"YES\" to confirm"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"SESSION TERMINATED\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click \"EXIT ROOM\""
+      }
+    ]
+  },
+  {
+    "id": "TC023",
+    "title": "Cancel end session from confirmation prompt (choose NO)",
+    "description": "Verifies choosing NO on the confirmation prompt does not terminate the session and the war room remains usable.",
+    "category": "End Session",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Test crisis for cancel end session\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"war room\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the red \"END SESSION\" button in the top command bar"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"CONFIRM? YES / NO\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click \"NO\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"war room\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC024",
+    "title": "Dismiss end-session confirmation prompt via Escape key",
+    "description": "Verifies the confirmation prompt can be dismissed with Escape and the session continues.",
+    "category": "End Session",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Test crisis for escape dismiss\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"war room\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the red \"END SESSION\" button in the top command bar"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"CONFIRM? YES / NO\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Press \"Escape\" key"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"war room\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC025",
+    "title": "Crisis Board shows core sections after a session is assembled",
+    "description": "Verifies the Crisis Board center panel loads and shows the main sections for decisions, conflicts, and intel in an active war room session.",
+    "category": "Crisis Board",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"City-wide chemical spill near central station with rising panic\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Start\" (or \"Create Session\") button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Assembling\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Wait for text \"War Room\" to be visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Crisis Board\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"AGREED DECISIONS\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"OPEN CONFLICTS\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC026",
+    "title": "Crisis Board shows CRITICAL INTEL section in the center panel",
+    "description": "Verifies the Crisis Board includes the CRITICAL INTEL section and it is visible once the war room loads.",
+    "category": "Crisis Board",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Coordinated cyberattack on hospital network causing system outages\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Start\" (or \"Create Session\") button"
+      },
+      {
+        "type": "action",
+        "description": "Wait for text \"War Room\" to be visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Crisis Board\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"CRITICAL INTEL\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"AGREED DECISIONS\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"OPEN CONFLICTS\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC027",
+    "title": "Agreed decisions entries show a visible timestamp format",
+    "description": "Verifies at least one agreed decision entry displays a timestamp indicator in the Crisis Board.",
+    "category": "Crisis Board",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Major bridge collapse with multiple vehicles and suspected hazardous cargo\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Start\" (or \"Create Session\") button"
+      },
+      {
+        "type": "action",
+        "description": "Wait for text \"War Room\" to be visible"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the \"AGREED DECISIONS\" section in the Crisis Board"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"AGREED DECISIONS\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \":\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC028",
+    "title": "Open conflicts section is present and lists conflicts when available",
+    "description": "Verifies the Open Conflicts section exists and can display conflict items between agents when present.",
+    "category": "Crisis Board",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Rapidly spreading wildfire approaching suburbs with conflicting evacuation reports\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Start\" (or \"Create Session\") button"
+      },
+      {
+        "type": "action",
+        "description": "Wait for text \"War Room\" to be visible"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the \"OPEN CONFLICTS\" section in the Crisis Board"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"OPEN CONFLICTS\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"OPEN CONFLICTS list\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC029",
+    "title": "Critical intel section is present and lists intel items when available",
+    "description": "Verifies the Critical Intel section exists and can display intel items produced by the simulation.",
+    "category": "Crisis Board",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Unidentified drone swarm over downtown with uncertain intent\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Start\" (or \"Create Session\") button"
+      },
+      {
+        "type": "action",
+        "description": "Wait for text \"War Room\" to be visible"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the \"CRITICAL INTEL\" section in the Crisis Board"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"CRITICAL INTEL\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"CRITICAL INTEL list\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC030",
+    "title": "Crisis Board supports expanding an item if details view is available",
+    "description": "Verifies that clicking a decision or intel item opens a details view when the UI supports expansion.",
+    "category": "Crisis Board",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Airport security incident with suspected coordinated threat\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Start\" (or \"Create Session\") button"
+      },
+      {
+        "type": "action",
+        "description": "Wait for text \"War Room\" to be visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the first visible item under \"AGREED DECISIONS\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Item details\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"AGREED DECISIONS\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC031",
+    "title": "Crisis Board shows a synchronization/loading state during delayed data",
+    "description": "Verifies the Crisis Board presents a loading/synchronizing message when the feed/board data is delayed or reconnecting.",
+    "category": "Crisis Board",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Severe flooding with communications outages and intermittent connectivity\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Start\" (or \"Create Session\") button"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Assembling\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Wait for text \"War Room\" to be visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Crisis Board\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Synchronizing\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC032",
+    "title": "Crisis Board offers historical replay controls when data is being synchronized",
+    "description": "Verifies that when the session indicates delayed events, the Crisis Board provides a visible replay/history control.",
+    "category": "Crisis Board",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to \"/\""
+      },
+      {
+        "type": "action",
+        "description": "Type \"Earthquake aftermath with aftershocks and delayed situation reports\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the \"Start\" (or \"Create Session\") button"
+      },
+      {
+        "type": "action",
+        "description": "Wait for text \"War Room\" to be visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Crisis Board\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Replay\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"synchronized\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC033",
+    "title": "Crisis Feed displays existing feed items with timestamps, source names, and content",
+    "description": "Verifies the Crisis Feed is visible in the war room and shows readable feed items including timestamp, source, and message text.",
+    "category": "Crisis Feed",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Severe coastal flooding with power outages\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Assembling\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Crisis Feed\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Feed item timestamp\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Feed item source/agent name\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Feed item message text\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC034",
+    "title": "Crisis Feed is positioned in the bottom-left and remains visible in the war room",
+    "description": "Verifies the Crisis Feed panel is visible in the bottom-left area of the war room UI and labeled correctly.",
+    "category": "Crisis Feed",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Airport security incident with unclear threat level\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Crisis Feed\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Feed\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Feed panel container\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC035",
+    "title": "New feed items appear at the top of the Crisis Feed during the simulation",
+    "description": "Verifies that newly arriving feed items show up at the top of the feed list (most recent first).",
+    "category": "Crisis Feed",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Cyberattack on hospital network causing system outages\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Crisis Feed\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Top feed item\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Wait for 20 seconds"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Top feed item\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Second feed item\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC036",
+    "title": "Crisis Feed supports scrolling to view older items",
+    "description": "Verifies the feed list can be scrolled to reveal older items below the initial view.",
+    "category": "Crisis Feed",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Earthquake with aftershocks affecting urban infrastructure\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Crisis Feed\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the bottom of the Crisis Feed list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Older feed item\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Scroll to the top of the Crisis Feed list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Top feed item\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC037",
+    "title": "Crisis Feed shows system and agent-sourced messages distinctly (by visible source label)",
+    "description": "Verifies feed items include a visible source label that can represent agents and system messages.",
+    "category": "Crisis Feed",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Wildfire spreading near multiple residential zones\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Crisis Feed\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"System\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Agent name\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Feed item message text\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC038",
+    "title": "Crisis Feed remains usable while items continue to arrive (no visual disappearance of the panel)",
+    "description": "Verifies the feed panel stays visible and readable over time as the simulation continues to post new items.",
+    "category": "Crisis Feed",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Chemical spill near a river impacting drinking water supply\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Crisis Feed\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Wait for 30 seconds"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Crisis Feed\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Feed item message text\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC039",
+    "title": "Create a new session and verify Agent Voice Pods area is visible in the war room",
+    "description": "Ensures a user can start from the landing page, create a session, wait for bootstrapping, and see the bottom-center agent voice pods area.",
+    "category": "Agent Voice Pods",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"War Room\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Test crisis: coordinated cyberattack impacting hospital systems\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Assembling\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the war room screen to load"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Agent voice pods\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC040",
+    "title": "Verify agent pods display visible status labels (thinking/speaking/idle)",
+    "description": "Validates that at least one pod shows a visible status and that pod statuses are rendered in the bottom-center pods area.",
+    "category": "Agent Voice Pods",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Test crisis: earthquake with cascading infrastructure failures\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the war room screen to load"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Agent voice pods\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"thinking\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"speaking\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC041",
+    "title": "Open a pod and verify detailed pod view shows transcript snippets and trust score",
+    "description": "Ensures a user can click a pod to open its details and see recent transcript snippets and a trust score.",
+    "category": "Agent Voice Pods",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Test crisis: chemical spill near residential area; need coordinated response\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the war room screen to load"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Agent voice pods\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the first visible agent pod"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Recent transcript\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Trust\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC042",
+    "title": "Verify pod detail view shows multiple recent transcript snippets when opened",
+    "description": "Checks that the detailed pod view provides more than one visible transcript snippet item when available.",
+    "category": "Agent Voice Pods",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Test crisis: wildfire evacuation coordination across multiple counties\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the war room screen to load"
+      },
+      {
+        "type": "action",
+        "description": "Wait for agents to begin generating dialogue"
+      },
+      {
+        "type": "action",
+        "description": "Click on a visible agent pod"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Transcript\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Transcript snippet\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC043",
+    "title": "Verify clicking a pod while it is speaking still opens the detailed view",
+    "description": "Ensures the pod remains interactive during speaking state and the detailed pod view can be opened without breaking UI.",
+    "category": "Agent Voice Pods",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Test crisis: major transit outage affecting emergency services response times\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the war room screen to load"
+      },
+      {
+        "type": "action",
+        "description": "Wait for text \"speaking\" to be visible on any agent pod"
+      },
+      {
+        "type": "action",
+        "description": "Click on the agent pod showing \"speaking\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Trust\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC044",
+    "title": "Verify chairman transcript appears and is routed to the intended agent in the pod detail view (if available)",
+    "description": "Validates that after an interrupt, the chairman transcript is visible and associated with the correct agent in the detailed pod view.",
+    "category": "Agent Voice Pods",
+    "priority": "Low",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Type \"Test crisis: ransomware attack on municipal services; prioritize containment and communications\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the war room screen to load"
+      },
+      {
+        "type": "action",
+        "description": "Wait for text \"interrupted\" to be visible on a pod"
+      },
+      {
+        "type": "action",
+        "description": "Click on the pod showing \"interrupted\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Chairman\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Transcript\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC045",
+    "title": "Right panel shows core intelligence stats after war room loads",
+    "description": "Verifies the right sidebar renders the main intelligence stat tiles once the war room session finishes assembling.",
+    "category": "Right Panel Intelligence",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Type \"E2E test crisis: right panel stats\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click on the button to create/start the session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Assembling\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Right Panel\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Agents Active\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Conflicts Open\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Session Health\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC046",
+    "title": "Right panel shows all expected intelligence stat labels",
+    "description": "Verifies all stat labels in the intelligence summary are present: Agents Active, Conflicts Open, Decisions Locked, Intel Items, Session Health.",
+    "category": "Right Panel Intelligence",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Type \"E2E test crisis: all stat labels\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click on the button to create/start the session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Right Panel\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Agents Active\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Conflicts Open\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Decisions Locked\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Intel Items\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC047",
+    "title": "Agent Trust Scores render as percentages",
+    "description": "Verifies the Agent Trust Scores section displays percentage values for agents in the right panel.",
+    "category": "Right Panel Intelligence",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Type \"E2E test crisis: trust scores\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click on the button to create/start the session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Right Panel\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Trust\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"%\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Agent Trust Scores\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC048",
+    "title": "Crisis Posture axes are visible in the right panel",
+    "description": "Verifies Crisis Posture section renders the three axes labels in the right sidebar.",
+    "category": "Right Panel Intelligence",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Type \"E2E test crisis: posture axes\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click on the button to create/start the session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Right Panel\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Crisis Posture\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Public Exposure\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Legal Exposure\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Internal Stability\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC049",
+    "title": "Resolution Score with trend and contributors is visible",
+    "description": "Verifies the Resolution Score section appears with trend context and contributor list/labels.",
+    "category": "Right Panel Intelligence",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Type \"E2E test crisis: resolution score\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click on the button to create/start the session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Right Panel\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Resolution Score\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Trend\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Contributors\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC050",
+    "title": "Intelligence data loading shows skeleton placeholders before values appear",
+    "description": "Verifies skeleton placeholders appear for intelligence sections during initial load and that values/sections render afterward.",
+    "category": "Right Panel Intelligence",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Type \"E2E test crisis: skeletons\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click on the button to create/start the session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Assembling\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Right Panel\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Loading\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Agents Active\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC051",
+    "title": "Retry control appears when intelligence fails to load",
+    "description": "Verifies an on-screen retry control is presented when the intelligence sections fail to load.",
+    "category": "Right Panel Intelligence",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Type \"E2E test crisis: retry control\" into the crisis description field"
+      },
+      {
+        "type": "action",
+        "description": "Click on the button to create/start the session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Right Panel\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Retry\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on \"Retry\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Agents Active\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC052",
+    "title": "Top command bar displays core status elements in an active war room session",
+    "description": "Verifies the top command bar shows crisis title, UTC time, mic/LIVE indicators, threat level badge, and countdown timer.",
+    "category": "Top Command Bar",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill a crisis description into the crisis input field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Assembling\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Top Command Bar\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"LIVE\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Threat level\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Countdown timer\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC053",
+    "title": "Crisis title can be expanded to show details from the top command bar",
+    "description": "Verifies clicking the crisis title expands and shows additional details (domain and brief) in the top bar area.",
+    "category": "Top Command Bar",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill a crisis description into the crisis input field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Top Command Bar\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click on the crisis title in the top command bar"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Domain\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Brief\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC054",
+    "title": "Mic status indicator and LIVE badge are visible together in the top command bar",
+    "description": "Verifies mic status (ACTIVE/MUTED) is displayed and the LIVE indicator is present in the command bar.",
+    "category": "Top Command Bar",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill a crisis description into the crisis input field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Top Command Bar\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Mic status\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"LIVE\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC055",
+    "title": "Threat level badge shows one of the supported levels",
+    "description": "Verifies the threat level badge is visible and displays a supported label (CONTAINED/ELEVATED/CRITICAL/MELTDOWN).",
+    "category": "Top Command Bar",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill a crisis description into the crisis input field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Threat level\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"CONTAINED\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"ELEVATED\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"CRITICAL\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC056",
+    "title": "UPDATE DOCUMENT is disabled or unavailable while required draft sections are incomplete",
+    "description": "Verifies clicking UPDATE DOCUMENT during processing shows it is unavailable (disabled state or tooltip message).",
+    "category": "Top Command Bar",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill a crisis description into the crisis input field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"Top Command Bar\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click \"UPDATE DOCUMENT\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Unavailable until draft sections complete\" is visible"
+      }
+    ]
+  },
+  {
+    "id": "TC057",
+    "title": "END SESSION terminates the current session from the top command bar",
+    "description": "Verifies END SESSION ends the war room session and transitions to an ended state or exits the war room UI.",
+    "category": "Top Command Bar",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /"
+      },
+      {
+        "type": "action",
+        "description": "Fill a crisis description into the crisis input field"
+      },
+      {
+        "type": "action",
+        "description": "Click the button to create/start the session"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify element \"END SESSION\" is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click \"END SESSION\""
+      },
+      {
+        "type": "assertion",
+        "description": "Verify text \"Session ended\" is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify URL contains \"/\""
+      }
+    ]
+  }
+]

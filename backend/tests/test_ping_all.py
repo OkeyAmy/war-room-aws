@@ -1,6 +1,6 @@
 """
 WAR ROOM — Test Ping: Full Stack
-Runs all connectivity tests: Gemini API + GCP Firestore.
+Runs all connectivity tests: Amazon Nova API + GCP Firestore.
 """
 
 import os
@@ -12,11 +12,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 def main():
     print("\n" + "=" * 55)
-    print("  ⚔️  WAR ROOM — Full Connectivity Test Suite")
+    print("  WAR ROOM — Full Connectivity Test Suite")
     print("=" * 55)
 
     scripts = [
-        ("Gemini API", os.path.join(os.path.dirname(__file__), "test_ping_gemini.py")),
+        ("Amazon Nova API", os.path.join(os.path.dirname(__file__), "test_ping_amazon.py")),
         ("GCP Firestore", os.path.join(os.path.dirname(__file__), "test_ping_gcp.py")),
     ]
 
@@ -34,9 +34,9 @@ def main():
 
     print(f"\n{'=' * 55}")
     if all_passed:
-        print("  🎉 ALL CONNECTIVITY TESTS PASSED!")
+        print("  ALL CONNECTIVITY TESTS PASSED!")
     else:
-        print("  ⚠️  Some tests had issues — review output above")
+        print("  Some tests had issues — review output above")
     print("=" * 55 + "\n")
 
 

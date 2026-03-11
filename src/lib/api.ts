@@ -303,9 +303,10 @@ export async function pollUntilReady(
     token: string,
     onLog: (log: AssemblyLogEntry[]) => void,
     intervalMs: number = 1500,
-    timeoutMs: number = 90_000
+    timeoutMs: number = 180_000
 ): Promise<ScenarioResponse> {
     const deadline = Date.now() + timeoutMs;
+    const timeoutMinutes = Math.round(timeoutMs / 60_000);
 
     while (Date.now() < deadline) {
         const result = await getScenario(sessionId, token);
@@ -318,7 +319,10 @@ export async function pollUntilReady(
         await new Promise((r) => setTimeout(r, intervalMs));
     }
 
-    throw new Error("Scenario assembly timed out after 90 seconds");
+    throw new Error(
+        `Scenario assembly timed out after ${timeoutMinutes} minutes. ` +
+        "The AI model may be under high demand — please try again."
+    );
 }
 
 // ── Agent types ────────────────────────────────────────────────────────────────

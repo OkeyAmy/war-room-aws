@@ -13,6 +13,7 @@ interface TopCommandBarProps {
   sessionTimeLeft: number; // seconds
   onUpdateDocument?: () => void;
   isUpdatingDocument?: boolean;
+  onEndSession?: () => void;
 }
 
 function getThreatStyle(level: ThreatLevel) {
@@ -60,9 +61,12 @@ export default function TopCommandBar({
   sessionTimeLeft,
   onUpdateDocument,
   isUpdatingDocument,
+  onEndSession,
 }: TopCommandBarProps) {
   const [utcTime, setUtcTime] = useState("");
   const [gearHovered, setGearHovered] = useState(false);
+  const [endHovered, setEndHovered] = useState(false);
+  const [confirmEnd, setConfirmEnd] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const detailsRef = useRef<HTMLDivElement>(null);
 
@@ -417,6 +421,68 @@ export default function TopCommandBar({
         >
           {formatTime(sessionTimeLeft)}
         </span>
+
+        {/* End Session Button */}
+        {onEndSession && (
+          confirmEnd ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "10px", color: "#FF2D2D", letterSpacing: "0.06em" }}>
+                CONFIRM?
+              </span>
+              <button
+                onClick={() => { setConfirmEnd(false); onEndSession(); }}
+                data-testid="end-session-confirm"
+                style={{
+                  padding: "3px 8px", background: "rgba(255,45,45,0.15)",
+                  border: "1px solid #FF2D2D", borderRadius: "2px",
+                  cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif",
+                  fontWeight: 600, fontSize: "10px", letterSpacing: "0.1em", color: "#FF2D2D",
+                }}
+              >
+                YES
+              </button>
+              <button
+                onClick={() => setConfirmEnd(false)}
+                style={{
+                  padding: "3px 8px", background: "transparent",
+                  border: "1px solid #4A5568", borderRadius: "2px",
+                  cursor: "pointer", fontFamily: "'Barlow Condensed', sans-serif",
+                  fontWeight: 500, fontSize: "10px", letterSpacing: "0.1em", color: "#4A5568",
+                }}
+              >
+                NO
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmEnd(true)}
+              onMouseEnter={() => setEndHovered(true)}
+              onMouseLeave={() => setEndHovered(false)}
+              data-testid="end-session-button"
+              style={{
+                display: "flex", alignItems: "center", gap: "6px",
+                padding: "4px 10px", background: endHovered ? "rgba(255,45,45,0.12)" : "transparent",
+                border: `1px solid ${endHovered ? "#FF2D2D" : "#3A2020"}`,
+                borderRadius: "2px", cursor: "pointer",
+                transition: "all 200ms ease",
+              }}
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#FF2D2D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" />
+                <line x1="9" y1="9" x2="15" y2="15" />
+                <line x1="15" y1="9" x2="9" y2="15" />
+              </svg>
+              <span style={{
+                fontFamily: "'Barlow Condensed', sans-serif", fontWeight: 600,
+                fontSize: "11px", letterSpacing: "0.12em",
+                color: endHovered ? "#FF2D2D" : "#5A3030",
+                transition: "color 200ms ease",
+              }}>
+                END SESSION
+              </span>
+            </button>
+          )
+        )}
 
         {/* Settings Gear */}
         <button

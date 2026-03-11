@@ -1,6 +1,6 @@
 """
 WAR ROOM — Document Engine
-Finalizes response documents at session end using Z.AI GLM-5 via OpenAI SDK.
+Finalizes response documents at session end using Amazon Nova 2 Lite via OpenAI SDK.
 Collects agent draft sections and session context, then produces
 polished deliverables (regulatory notifications, executive briefings, etc.).
 """
@@ -21,7 +21,7 @@ from config.constants import (
 logger = logging.getLogger(__name__)
 
 # ── Finalization Model ───────────────────────────────────────────────────
-# Uses Z.AI GLM-5 (zai_scenario_model) for complex document finalization.
+# Uses Amazon Nova 2 Lite (nova_scenario_model) for complex document finalization.
 
 FINALIZATION_PROMPT = """\
 You are the Document Finalization Engine for WAR ROOM.
@@ -98,11 +98,18 @@ async def finalize_all_documents(
         finalize_document(doc_spec, session_data)
         for doc_spec in required_docs
     ]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
+    try:
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+    except asyncio.CancelledError:
+        # Server shutdown during finalization — return empty list cleanly.
+        logger.warning(
+            f"Document finalization cancelled for session {session_id} (server shutdown)"
+        )
+        return []
 
     finalized = []
     for i, result in enumerate(results):
-        if isinstance(result, Exception):
+        if isinstance(result, (Exception, BaseException)):
             logger.error(
                 f"Document finalization failed for {required_docs[i].get('doc_id', '?')}: {result}"
             )
@@ -137,7 +144,7 @@ async def finalize_document(
     session_data: dict,
 ) -> dict:
     """
-    Finalize a single document using Z.AI GLM-5.
+    Finalize a single document using Amazon Nova 2 Lite.
 
     Args:
         doc_spec: The document specification (from required_documents).
@@ -181,18 +188,11 @@ async def finalize_document(
 
     content = ""
 
-    if settings.zai_api_key:
+    if settings.nova_api_key or settings.google_api_key:
         try:
-            from openai import OpenAI
+            from utils.model_provider import run_text_llm, get_active_provider
 
-            client = OpenAI(
-                api_key=settings.zai_api_key,
-                base_url=settings.zai_base_url,
-            )
-
-            response = await asyncio.to_thread(
-                client.chat.completions.create,
-                model=settings.zai_scenario_model,
+            response = await run_text_llm(
                 messages=[
                     {
                         "role": "system",
@@ -204,13 +204,15 @@ async def finalize_document(
                     },
                     {"role": "user", "content": prompt},
                 ],
+                model_type="scenario",
                 temperature=0.3,
                 max_tokens=3000,
             )
 
             content = (response.choices[0].message.content or "").strip()
             if content:
-                logger.info(f"Document '{title}' finalized with Z.AI {settings.zai_scenario_model}")
+                provider = get_active_provider()
+                logger.info(f"Document '{title}' finalized (provider={provider})")
         except Exception as e:
             logger.warning(f"Document finalization failed: {e}")
 

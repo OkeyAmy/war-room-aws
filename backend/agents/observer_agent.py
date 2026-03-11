@@ -4,7 +4,7 @@ Silent agent — no voice, no speaking. Watches all transcripts and
 Firestore state. Outputs insights (contradictions, alliances, blind spots)
 and trust score adjustments.
 
-Uses Z.AI GLM via OpenAI-compatible SDK.
+Uses Amazon Nova 2 Lite via OpenAI-compatible SDK.
 """
 
 from __future__ import annotations
@@ -146,16 +146,11 @@ class ObserverAgent:
         crisis = crisis_doc.to_dict() if crisis_doc.exists else {}
 
         # Run Observer LLM analysis
+        from utils.model_provider import run_text_llm
+
         output = None
-        if settings.zai_api_key:
+        if settings.nova_api_key or settings.google_api_key:
             try:
-                from openai import OpenAI
-
-                client = OpenAI(
-                    api_key=settings.zai_api_key,
-                    base_url=settings.zai_base_url,
-                )
-
                 context = json.dumps({
                     "agent_id": agent_id,
                     "new_statement": transcript,
@@ -167,21 +162,22 @@ class ObserverAgent:
                     "current_resolution_score": crisis.get("resolution_score", 50),
                 })
 
-                response = await asyncio.to_thread(
-                    client.chat.completions.create,
-                    model=settings.zai_fast_model,
+                response = await run_text_llm(
                     messages=[
                         {"role": "system", "content": OBSERVER_INSTRUCTION},
                         {"role": "user", "content": context},
                     ],
+                    model_type="fast",
+                    # Background analysis — don't block the room for too long.
+                    # Falls back to default on timeout rather than hanging.
+                    call_timeout=25.0,
                     temperature=0.7,
-                    max_tokens=800,
+                    max_tokens=1200,
                     response_format={"type": "json_object"},
                 )
 
                 raw = response.choices[0].message.content or ""
                 cleaned = raw.strip()
-                # Strip accidental markdown fences
                 if cleaned.startswith("```json"):
                     cleaned = cleaned[7:]
                 elif cleaned.startswith("```"):
@@ -191,7 +187,15 @@ class ObserverAgent:
                 cleaned = cleaned.strip()
 
                 if cleaned:
-                    output = json.loads(cleaned)
+                    try:
+                        output = json.loads(cleaned)
+                    except json.JSONDecodeError:
+                        # Truncated JSON from the model — attempt to close it,
+                        # then fall back to default if that still fails.
+                        try:
+                            output = json.loads(cleaned + "}")
+                        except json.JSONDecodeError:
+                            output = self._generate_default_analysis(transcript, agent_id)
                 else:
                     output = self._generate_default_analysis(transcript, agent_id)
 

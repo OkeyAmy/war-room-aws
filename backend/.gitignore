@@ -39,3 +39,7 @@ htmlcov/
 
 # Local dev data (JSON file stores)
 data/
+
+# TestSprite Output
+.testsprite/
+testsprite_tests/tmp/

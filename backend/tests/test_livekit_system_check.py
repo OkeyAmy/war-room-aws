@@ -45,11 +45,12 @@ def _parse_env(path: Path) -> dict[str, str]:
 
 def _print_env_status(env: dict[str, str]) -> bool:
     required = [
-        "ZAI_API_KEY",
+        "NOVA_API_KEY",
+        "AWS_ACCESS_KEY_ID",
+        "AWS_SECRET_ACCESS_KEY",
         "LIVEKIT_URL",
         "LIVEKIT_API_KEY",
         "LIVEKIT_API_SECRET",
-        "ELEVENLABS_API_KEY",
         "VOICE_BACKEND",
     ]
     ok = True
@@ -90,32 +91,10 @@ def test_livekit_environment():
     assert env_ok, "Missing required environment variables"
 
     settings = get_settings()
-    model_ok = bool(settings.zai_agent_model)
-    backend_ok = settings.voice_backend == "livekit_elevenlabs"
+    model_ok = bool(settings.nova_agent_model)
+    backend_ok = settings.voice_backend == "livekit_aws"
 
-    eleven_ok = False
-    if settings.elevenlabs_api_key:
-        try:
-            from livekit.plugins import elevenlabs
-            import asyncio
-            import aiohttp
-
-            async def _check():
-                async with aiohttp.ClientSession() as http_session:
-                    tts = elevenlabs.TTS(
-                        api_key=settings.elevenlabs_api_key,
-                        http_session=http_session,
-                    )
-                    try:
-                        voices = await tts.list_voices()
-                    finally:
-                        await tts.aclose()
-                    return len(voices)
-
-            count = asyncio.run(_check())
-            eleven_ok = count > 0
-        except Exception as e:
-            pass
+    aws_creds_ok = bool(settings.aws_access_key_id and settings.aws_secret_access_key)
 
     ping_ok = False
     if is_livekit_configured():
@@ -123,6 +102,6 @@ def test_livekit_environment():
 
     assert model_ok, "Model check failed"
     assert backend_ok, "Voice backend check failed"
-    assert eleven_ok, "Elevenlabs API check failed"
+    assert aws_creds_ok, "AWS credentials check failed"
     if is_livekit_configured():
         assert ping_ok, "LiveKit ping failed"

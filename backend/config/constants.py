@@ -85,42 +85,57 @@ EVENT_DEADLINE_RISK_FLAGGED = "deadline_risk_flagged"
 EVENT_SESSION_FINALIZING = "session_finalizing"
 EVENT_SESSION_PACKAGE_READY = "session_package_ready"
 
-# ── VOICE POOL (ElevenLabs voice IDs) ───────────────────────────────────
-# These IDs map to default/public voices and are used as stable fallbacks.
-ALLOWED_VOICE_POOL = [
-    "EXAVITQu4vr4xnSDxMaL",  # Sarah
-    "nPczCjzI2devNBz1zQrb",  # Brian
-    "cgSgspJ2msm6clMCkdW9",  # Jessica
-    "cjVigY5qzO86Huf0OWal",  # Eric
-    "SOYHLrjzK2X1ezoPC6cr",  # Harry
-    "pNInz6obpgDQGcFmaJgB",  # Adam
-    "CwhRBWXzGAHq8TQ4Fs17",  # Roger
-    "onwK4e9ZLuTAKqWW03F9",  # Daniel
-    "pFZP5JQG7iQjIQuC4Bku",  # Lily
-    "Xb7hH8MSUJpSbSDYk0k2",  # Alice,
-    "tnSpp4vdxKPjI9w0GnoV"
+# ── NOVA SONIC VOICE POOL ─────────────────────────────────────────────────
+# Named voices available in Amazon Nova Sonic.
+NOVA_VOICE_POOL = [
+    "tiffany", "matthew", "olivia", "liam", "sophia",
+    "jackson", "emma", "aiden", "isabella", "lucas",
+    "mia", "ethan", "charlotte", "noah", "amelia", "james",
 ]
 
-VOICE_STYLE_MAP = {
-    "authoritative": ["nPczCjzI2devNBz1zQrb", "SOYHLrjzK2X1ezoPC6cr", "pNInz6obpgDQGcFmaJgB"],
-    "warm":          ["EXAVITQu4vr4xnSDxMaL", "pFZP5JQG7iQjIQuC4Bku", "Xb7hH8MSUJpSbSDYk0k2", "tnSpp4vdxKPjI9w0GnoV"],
-    "clipped":       ["CwhRBWXzGAHq8TQ4Fs17", "cjVigY5qzO86Huf0OWal", "onwK4e9ZLuTAKqWW03F9"],
-    "measured":      ["cgSgspJ2msm6clMCkdW9", "pFZP5JQG7iQjIQuC4Bku", "cjVigY5qzO86Huf0OWal"],
-    "urgent":        ["SOYHLrjzK2X1ezoPC6cr", "nPczCjzI2devNBz1zQrb", "onwK4e9ZLuTAKqWW03F9"],
-    "calm":          ["Xb7hH8MSUJpSbSDYk0k2", "EXAVITQu4vr4xnSDxMaL", "cgSgspJ2msm6clMCkdW9"],
-    "aggressive":    ["pNInz6obpgDQGcFmaJgB", "SOYHLrjzK2X1ezoPC6cr", "nPczCjzI2devNBz1zQrb"],
+# Maps agent voice_style → ordered list of Nova Sonic voice names.
+# The scenario analyst sets voice_style per agent; assignment picks the
+# first unused voice from the matching candidates.
+NOVA_VOICE_STYLE_MAP: dict[str, list[str]] = {
+    "authoritative": ["matthew", "james",    "ethan",    "lucas"],
+    "warm":          ["tiffany", "sophia",   "isabella", "amelia", "mia"],
+    "clipped":       ["liam",    "jackson",  "noah",     "aiden"],
+    "measured":      ["olivia",  "charlotte","emma",     "tiffany"],
+    "urgent":        ["aiden",   "matthew",  "lucas",    "ethan"],
+    "calm":          ["tiffany", "olivia",   "mia",      "charlotte"],
+    "aggressive":    ["james",   "ethan",    "jackson",  "noah"],
 }
 
-# Legacy Gemini Live voices for fallback mode when ElevenLabs is unavailable.
-GEMINI_FALLBACK_VOICES = [
-    "Aoede", "Charon", "Fenrir", "Kore", "Puck",
+# ── GEMINI LIVE VOICE POOL ────────────────────────────────────────────────
+# Named voices available in the Gemini Live (realtime) API.
+GEMINI_VOICE_POOL = [
+    "Puck", "Charon", "Kore", "Fenrir", "Aoede",
+    "Orbit", "Zephyr", "Oberon", "Orus",
     "Achird", "Algenib", "Algieba", "Alnilam",
     "Auva", "Callirrhoe", "Despina", "Enceladus", "Erinome",
-    "Gacrux", "Iapetus", "Laomedeia", "Leda", "Orus",
+    "Gacrux", "Iapetus", "Laomedeia", "Leda",
     "Pulcherrima", "Rasalgethi", "Sadachbia", "Sadaltager",
     "Schedar", "Sulafat", "Umbriel", "Vindemiatrix",
-    "Zephyr", "Zubenelgenubi",
+    "Zubenelgenubi",
 ]
+
+# Maps agent voice_style → ordered list of Gemini Live voice names.
+GEMINI_VOICE_STYLE_MAP: dict[str, list[str]] = {
+    "authoritative": ["Fenrir",  "Charon",  "Orus",     "Oberon"],
+    "warm":          ["Kore",    "Aoede",   "Callirrhoe","Leda"],
+    "clipped":       ["Puck",    "Zephyr",  "Gacrux",   "Achird"],
+    "measured":      ["Charon",  "Orbit",   "Sulafat",  "Schedar"],
+    "urgent":        ["Aoede",   "Fenrir",  "Alnilam",  "Erinome"],
+    "calm":          ["Kore",    "Umbriel", "Sadachbia","Orbit"],
+    "aggressive":    ["Fenrir",  "Orus",    "Rasalgethi","Oberon"],
+}
+
+# Combined pool used as a generic fallback (e.g. voice_discovery).
+# Populated at runtime based on active provider.
+ALLOWED_VOICE_POOL = NOVA_VOICE_POOL
+
+# Legacy alias kept for backwards compatibility with health checks.
+VOICE_STYLE_MAP = NOVA_VOICE_STYLE_MAP
 
 # ── POSTURE DEFAULTS ─────────────────────────────────────────────────────
 DEFAULT_POSTURE = {

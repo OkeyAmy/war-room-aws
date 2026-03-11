@@ -92,6 +92,7 @@ def start_discussion_loop(session_id: str) -> None:
         from utils.firestore_helpers import _get_db
 
         logger.info(f"[LIVEKIT_AGENT_LOOP] started for session {session_id}")
+        await asyncio.sleep(3.0)  # Wait for WS connections to establish
         _discussion_cursor.setdefault(session_id, 0)
         _discussion_phase.setdefault(session_id, "intro")
         _introduced_agents.setdefault(session_id, set())
@@ -154,11 +155,34 @@ def start_discussion_loop(session_id: str) -> None:
                 #   2) debate: structured pushback based on live board state
                 agent_id = getattr(agent, "agent_id", "")
                 introduced = _introduced_agents.get(session_id, set())
+                role_config = getattr(agent, "role_config", {})
+                defining_line = role_config.get("defining_line", "")
+                agent_agenda = role_config.get("agenda", "")
+                initial_position = role_config.get("initial_position", "")
+                role_title = role_config.get("role_title", "Advisor")
+                crisis_brief = crisis.get("crisis_brief", "")
+                crisis_title = crisis.get("crisis_title", "")
+
                 if _discussion_phase.get(session_id) == "intro" and agent_id not in introduced:
                     prompt = (
-                        "INTRO ROUND.\n"
-                        f"You are {char_name}. Introduce yourself in 2-3 sentences.\n"
-                        "State your role priority and one immediate concern about this crisis.\n"
+                        "INTRO ROUND — OPENING STATEMENT.\n\n"
+                        f"CRISIS: {crisis_title}\n"
+                        f"SITUATION: {crisis_brief}\n\n"
+                        f"You are {char_name}, the {role_title}.\n"
+                    )
+                    if defining_line:
+                        prompt += (
+                            f"Your opening stance: \"{defining_line}\"\n"
+                        )
+                    if initial_position:
+                        prompt += f"Your initial position: {initial_position}\n"
+                    if agent_agenda:
+                        prompt += f"Your priority: {agent_agenda}\n"
+                    prompt += (
+                        "\nDeliver your opening statement in 2-3 sentences. "
+                        "Reference the SPECIFIC crisis situation — names, facts, stakes. "
+                        "State your immediate concern and what action you recommend. "
+                        "Do NOT give a generic introduction. Speak as if the crisis is unfolding NOW.\n"
                         "Do not output JSON or tool-call traces."
                     )
                     introduced.add(agent_id)
@@ -185,8 +209,10 @@ def start_discussion_loop(session_id: str) -> None:
 
                 # Rotate active responder target and prompt a concise turn.
                 _active_voice_agents[session_id] = getattr(agent, "agent_id", "")
+                dispatch_ok = False
                 try:
                     await agent.send_text(prompt)
+                    dispatch_ok = True
                     logger.info(
                         f"[LIVEKIT_AGENT_LOOP] dispatched turn session={session_id} "
                         f"agent={getattr(agent, 'agent_id', 'unknown')} "
@@ -195,19 +221,33 @@ def start_discussion_loop(session_id: str) -> None:
                 except Exception as e:
                     logger.warning(f"[LIVEKIT_AGENT_LOOP] dispatch failed: {e}")
 
-                # Wait for the agent to start speaking (acquiring the floor)
+                if not dispatch_ok:
+                    # Dispatch failed — back off before trying next agent
+                    await asyncio.sleep(3.0)
+                    continue
+
+                # Wait for the agent to start speaking (acquiring the floor).
+                # Max 15s — if floor never acquired the LLM call failed; back off and move on.
+                import time
                 wait_for_acquire = 0
-                while tm.is_floor_free() and wait_for_acquire < 30:
+                while tm.is_floor_free() and wait_for_acquire < 15:
                     await asyncio.sleep(1.0)
                     wait_for_acquire += 1
+
+                agent_spoke = not tm.is_floor_free()
 
                 # Once the agent has the floor, wait until they finish speaking
                 while not tm.is_floor_free():
                     await asyncio.sleep(1.0)
 
+                if not agent_spoke:
+                    # LLM failed silently — enforce a short cooldown before the next dispatch
+                    # to avoid flooding the API and spinning the loop at full speed.
+                    await asyncio.sleep(4.0)
+                    continue
+
                 # Enforce 5 to 8 second silence between agent turns
                 import random
-                import time
                 target_silence = random.uniform(5.5, 8.0)
                 while time.monotonic() - tm.last_turn_end_time < target_silence:
                     if tm.is_session_ended() or not tm.is_floor_free():
