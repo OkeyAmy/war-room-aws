@@ -42,7 +42,7 @@ class DocumentSpec(BaseModel):
         default="executive_briefing",
         description="regulatory_notification | executive_briefing | technical_report | customer_notification | insurance_report",
     )
-    legal_framework: str = Field(default="", description="Applicable regulation or standard")
+    legal_framework: Optional[str] = Field(default="", description="Applicable regulation or standard")
 
 
 class DocumentDraftSection(BaseModel):

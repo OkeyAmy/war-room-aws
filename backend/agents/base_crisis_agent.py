@@ -413,7 +413,7 @@ class CrisisAgent:
         if not settings.nova_api_key and not settings.google_api_key:
             return "[LLM unavailable — neither NOVA_API_KEY nor GOOGLE_API_KEY configured]"
 
-        crisis_brief = await self._read_crisis_brief()
+        board_summary = await self._read_crisis_board_summary()
         defining_line = self.role_config.get("defining_line", "")
         initial_position = self.role_config.get("initial_position", "")
         agenda = self.role_config.get("agenda", "")
@@ -438,9 +438,11 @@ class CrisisAgent:
             f"{self.skill_md}\n\n"
             f"VOICE PERSONA: You are {self.role_config.get('character_name', 'Agent')}, "
             f"the {self.role_config.get('role_title', 'Advisor')}.\n"
-            f"CRISIS BRIEF:\n{crisis_brief}\n\n"
+            f"CURRENT CRISIS BOARD & FEED:\n{board_summary}\n\n"
             f"{position_context}"
             "Respond in character as spoken dialogue only. "
+            "NEVER mention that you are an AI, a language model, or a simulation. You are a real human expert in a high-stakes crisis situation. "
+            "You MUST read and incorporate new developments from the CRISIS FEED into your responses. "
             "Reference SPECIFIC facts, names, and stakes from the crisis — never be generic. "
             "Do NOT print JSON, markdown code fences, tool call lists, or function-call arguments. "
             f"{intro_rule} "
@@ -495,13 +497,33 @@ class CrisisAgent:
         text = re.sub(r"\s+", " ", text).strip()
         return text
 
-    async def _read_crisis_brief(self) -> str:
+    async def _read_crisis_board_summary(self) -> str:
         try:
             doc = await self.crisis_ref.get()
             if doc.exists:
-                return (doc.to_dict() or {}).get("crisis_brief", "")
-        except Exception:
-            pass
+                data = doc.to_dict() or {}
+                brief = data.get("crisis_brief", "")
+                
+                intel = data.get("critical_intel", [])
+                recent_intel = "\n".join([f"- [{i.get('source', '')}] {i.get('text', '')}" for i in intel[-5:]])
+                
+                conflicts = data.get("open_conflicts", [])
+                recent_conflicts = "\n".join([f"- {c.get('description', '')} (Agents: {', '.join(c.get('agents_involved', []))})" for c in conflicts])
+                
+                decisions = data.get("agreed_decisions", [])
+                recent_decisions = "\n".join([f"- {d.get('text', '')}" for d in decisions])
+                
+                summary = f"CRISIS BRIEF:\n{brief}\n"
+                if recent_intel:
+                    summary += f"\nLATEST CRISIS FEED / INTEL:\n{recent_intel}\n"
+                if recent_conflicts:
+                    summary += f"\nOPEN CONFLICTS:\n{recent_conflicts}\n"
+                if recent_decisions:
+                    summary += f"\nAGREED DECISIONS:\n{recent_decisions}\n"
+                    
+                return summary.strip()
+        except Exception as e:
+            logger.warning(f"[{self.agent_id}] Failed to read crisis board: {e}")
         return ""
 
     def _normalize_text(self, text: str) -> str:
@@ -608,7 +630,7 @@ class CrisisAgent:
                     "type": "session.update",
                     "session": {
                         "type": "realtime",
-                        "instructions": "Read the following text naturally.",
+                        "instructions": "You are a strict text-to-speech engine. Read the exact text provided word-for-word. Do not answer questions or add commentary.",
                         "audio": {
                             "output": {
                                 "voice": self.assigned_voice or "tiffany"
@@ -695,6 +717,12 @@ class CrisisAgent:
             client = _genai.Client(api_key=settings.google_api_key)
             live_config = _gtypes.LiveConnectConfig(
                 response_modalities=["AUDIO"],
+                system_instruction=_gtypes.Content(
+                    parts=[_gtypes.Part.from_text(
+                        text="You are a strict text-to-speech engine. Your only job is to recite the user's text EXACTLY word-for-word. "
+                        "Do NOT answer questions, do NOT add commentary, and do NOT change any words. Just read the text verbatim out loud."
+                    )]
+                ),
                 speech_config=_gtypes.SpeechConfig(
                     voice_config=_gtypes.VoiceConfig(
                         prebuilt_voice_config=_gtypes.PrebuiltVoiceConfig(
@@ -714,7 +742,8 @@ class CrisisAgent:
                 model=settings.gemini_realtime_model,
                 config=live_config,
             ) as session:
-                await session.send(input=text, end_of_turn=True)
+                prompt_text = f"Read the following text exactly word-for-word:\n\n{text}"
+                await session.send(input=prompt_text, end_of_turn=True)
                 async for response in session.receive():
                     if response.data:
                         audio_b64 = base64.b64encode(response.data).decode()

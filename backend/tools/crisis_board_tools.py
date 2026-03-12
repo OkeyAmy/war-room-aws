@@ -101,12 +101,17 @@ async def write_agreed_decision(
     }
 
     # Append to crisis session document
-    try:
-        from google.cloud import firestore as fs
-        await db.collection(COLLECTION_CRISIS_SESSIONS) \
-                .document(session_id) \
-                .update({"agreed_decisions": fs.ArrayUnion([decision])})
-    except ImportError:
+    is_local = db.__class__.__name__ == "LocalDevDB"
+    if not is_local:
+        try:
+            from google.cloud import firestore as fs
+            await db.collection(COLLECTION_CRISIS_SESSIONS) \
+                    .document(session_id) \
+                    .update({"agreed_decisions": fs.ArrayUnion([decision])})
+        except ImportError:
+            is_local = True
+
+    if is_local:
         # Local dev fallback
         doc = await db.collection(COLLECTION_CRISIS_SESSIONS) \
                       .document(session_id).get()
@@ -165,12 +170,17 @@ async def write_open_conflict(
         "severity": severity,
     }
 
-    try:
-        from google.cloud import firestore as fs
-        await db.collection(COLLECTION_CRISIS_SESSIONS) \
-                .document(session_id) \
-                .update({"open_conflicts": fs.ArrayUnion([conflict])})
-    except ImportError:
+    is_local = db.__class__.__name__ == "LocalDevDB"
+    if not is_local:
+        try:
+            from google.cloud import firestore as fs
+            await db.collection(COLLECTION_CRISIS_SESSIONS) \
+                    .document(session_id) \
+                    .update({"open_conflicts": fs.ArrayUnion([conflict])})
+        except ImportError:
+            is_local = True
+
+    if is_local:
         doc = await db.collection(COLLECTION_CRISIS_SESSIONS) \
                       .document(session_id).get()
         if doc.exists:
@@ -227,12 +237,17 @@ async def write_critical_intel(
         "is_escalation": is_escalation,
     }
 
-    try:
-        from google.cloud import firestore as fs
-        await db.collection(COLLECTION_CRISIS_SESSIONS) \
-                .document(session_id) \
-                .update({"critical_intel": fs.ArrayUnion([intel])})
-    except ImportError:
+    is_local = db.__class__.__name__ == "LocalDevDB"
+    if not is_local:
+        try:
+            from google.cloud import firestore as fs
+            await db.collection(COLLECTION_CRISIS_SESSIONS) \
+                    .document(session_id) \
+                    .update({"critical_intel": fs.ArrayUnion([intel])})
+        except ImportError:
+            is_local = True
+
+    if is_local:
         doc = await db.collection(COLLECTION_CRISIS_SESSIONS) \
                       .document(session_id).get()
         if doc.exists:
