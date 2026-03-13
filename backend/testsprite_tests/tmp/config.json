@@ -1,0 +1,19 @@
+{
+  "status": "commited",
+  "type": "backend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:8000",
+  "backendAuthType": "public",
+  "executionArgs": {
+    "projectName": "backend",
+    "projectPath": "/home/okey/Desktop/Projects/war_room_zai/backend",
+    "testIds": [],
+    "additionalInstruction": "Generate and execute tests for all Test cases (TC001, TC002, TC003, TC004, TC005, TC006). \nSTRICT RULE 1: The test execution sandbox does NOT have the `websockets` library installed. DO NOT write `import websockets`, `import websocket` or any code that tries to connect to the WebSocket endpoints. Just test the standard REST HTTP endpoints!\nSTRICT RULE 2: Read the provided API specification strictly (`/api/sessions` returns 201 not 200). `chairman_token` from TC001 should be used for Authorization header: `Authorization: Bearer <token>`. TC004 DELETE `/api/sessions/{session_id}` ends the session, do this LAST.\nSTRICT RULE 3: TC004 expects 403 or 404 after the session ends explicitly because closed sessions are invalid. Wait times might be needed for `/api/health` and `/api/voices`.\nDo not verify WebSockets anywhere. Verify HTTP properties heavily.",
+    "serverMode": "development",
+    "envs": {
+      "API_KEY": "sk-user-UT0Fb0T3qmaU_ZK0K4ssTUU511H4u-ckCaxtfUhkDLkgrKKp6OjbkudTINVBP1Q3Lcv_l_ijCRRXI1xkQKwTR_cLNT7J2xcpYbu7dvKBMQq3UOwRAHesgGGFh5dS-XrlYOk"
+    }
+  },
+  "serverPort": 33905,
+  "proxy": "http://c5acde9e-8356-4f80-a9a4-cbb888635a43:Q7Lb0NxYZ6eXGhotkQcaptNrB5BsDlmK@tun.testsprite.com:8080"
+}

@@ -47,6 +47,10 @@ async def validate_chairman_token(session_id: str, token: str) -> dict:
         raise HTTPException(status_code=404, detail="session_not_found")
 
     session_data = doc.to_dict()
+    
+    if session_data.get("status") == "closed":
+        raise HTTPException(status_code=404, detail="session_closed")
+
     stored_token = session_data.get("chairman_token", "")
 
     if stored_token != token:

@@ -1,0 +1,43 @@
+version: "2"
+type: backend
+tech_stack:
+  - python
+  - fastapi
+  - firestore
+features:
+  - name: Session Management API
+    description: CRUD operations for crisis sessions
+    files:
+      - main.py
+      - utils/auth.py
+    endpoints:
+      - method: POST
+        path: /api/sessions
+        description: Create a new crisis session
+        auth_required: false
+      - method: GET
+        path: /api/sessions/{session_id}
+        description: Get session state
+        auth_required: true
+      - method: PATCH
+        path: /api/sessions/{session_id}
+        description: Update session settings
+        auth_required: true
+      - method: DELETE
+        path: /api/sessions/{session_id}
+        description: End crisis session
+        auth_required: true
+  - name: System Constraints
+    description: Health check and reference data
+    files:
+      - main.py
+    endpoints:
+      - method: GET
+        path: /api/health
+        description: Comprehensive health check
+        auth_required: false
+      - method: GET
+        path: /api/voices
+        description: List available voice configurations
+        auth_required: false
+known_limitations: []

@@ -1,0 +1,199 @@
+version: "2"
+type: frontend
+tech_stack:
+  - TypeScript
+  - Next.js 15 (App Router)
+  - React 18
+  - Tailwind CSS
+  - Custom CSS (war-room theme)
+routes:
+  - path: /
+    file: src/app/page.tsx
+    auth_required: false
+    description: Landing page where users describe a crisis and create a new session
+  - path: /war-room/[session_id]
+    file: src/app/war-room/[session_id]/page.tsx
+    auth_required: false
+    description: Main war room crisis command center with agents, crisis board, feeds, and chairman controls
+features:
+  - name: Create Crisis Session
+    description: User types a crisis description (minimum 10 chars), optionally sets a chairman callsign and session duration, then clicks Assemble Team to create a session
+    files:
+      - src/app/page.tsx
+      - src/lib/api.ts
+      - src/lib/sessionStore.ts
+    entry_route: /
+    user_interactions:
+      - Type crisis description into the large textarea (placeholder is "Describe your crisis. Anything. Real or fictional.")
+      - After typing 10+ characters, Chairman Callsign input and Session Duration slider appear
+      - Optionally type a chairman name into the Chairman Callsign field (default is DIRECTOR)
+      - Optionally adjust the session duration slider (5-120 minutes, default 30)
+      - Optionally upload intel files via drag-and-drop or file picker
+      - Click the "Assemble Team" button to submit
+      - See "Assembling your crisis team..." loading screen while agents are generated (30-90 seconds)
+      - Auto-navigated to /war-room/{session_id} when ready
+    api_calls:
+      - method: POST
+        endpoint: /api/sessions
+      - method: GET
+        endpoint: /api/sessions/{session_id}/scenario
+    auth_required: false
+  - name: Validation on Crisis Input
+    description: The Assemble Team button is disabled when crisis text is less than 10 characters
+    files:
+      - src/app/page.tsx
+    entry_route: /
+    user_interactions:
+      - Type a very short crisis text (less than 10 characters)
+      - Observe that the Assemble Team button remains disabled
+      - No error message is shown, the button just stays disabled
+    api_calls: []
+    auth_required: false
+  - name: War Room Agent Roster
+    description: Left panel shows a list of 4 AI agents with name, role, status, trust score. Users can select an agent to see details.
+    files:
+      - src/components/war-room/AgentRoster.tsx
+      - src/components/war-room/AgentDetailsOverlay.tsx
+      - src/app/war-room/[session_id]/page.tsx
+    entry_route: /war-room/{session_id}
+    user_interactions:
+      - View agent cards in the left AGENTS tab showing name, role, status (IDLE/SPEAKING/THINKING), trust score percentage
+      - Click an agent card to select it and open the Agent Details Overlay
+      - See agent details including character name, role title, trust score
+    api_calls:
+      - method: GET
+        endpoint: /api/sessions/{session_id}/agents
+    auth_required: false
+  - name: Dismiss Agent
+    description: Chairman can dismiss an agent from the roster, marking them as dismissed
+    files:
+      - src/components/war-room/AgentRoster.tsx
+      - src/app/war-room/[session_id]/page.tsx
+    entry_route: /war-room/{session_id}
+    user_interactions:
+      - Hover or interact with an agent card to reveal dismiss action
+      - Click dismiss to remove the agent from active roster
+      - Agent status changes to "dismissed" in the UI
+      - Feed shows "Agent X dismissed by chairman"
+    api_calls:
+      - method: PATCH
+        endpoint: /api/sessions/{session_id}/agents/{agent_id}
+    auth_required: false
+  - name: Summon Agent
+    description: Chairman can summon a new agent by describing the role needed
+    files:
+      - src/app/war-room/[session_id]/page.tsx
+    entry_route: /war-room/{session_id}
+    user_interactions:
+      - Click the "+ SUMMON AGENT" button at the bottom of the agent panel
+      - A modal appears with a text input for role description
+      - Type a role description (e.g. "Cybersecurity Expert")
+      - Click the "SUMMON" button
+      - See "GENERATING..." while the agent is being created
+      - New agent appears in the roster when ready
+    api_calls:
+      - method: POST
+        endpoint: /api/sessions/{session_id}/agents/summon
+    auth_required: false
+  - name: Chairman Command Bar
+    description: Text command bar at the bottom of the war room for chairman to issue commands or free-text speech to agents
+    files:
+      - src/components/war-room/ChairmanCommandBar.tsx
+      - src/app/war-room/[session_id]/page.tsx
+    entry_route: /war-room/{session_id}
+    user_interactions:
+      - Type a text command in the command bar at the bottom
+      - Press Enter or click send to submit the command
+      - Commands appear in the crisis feed as "[CMD] command text"
+      - Structural commands like "PAUSE", "RESUME", "END SESSION" have special effects
+      - Free-text commands are sent to agents as chairman speech
+    api_calls:
+      - method: POST
+        endpoint: /api/sessions/{session_id}/chairman
+    auth_required: false
+  - name: End Session
+    description: Chairman can end the session via the END SESSION button in the top bar
+    files:
+      - src/components/war-room/TopCommandBar.tsx
+      - src/app/war-room/[session_id]/page.tsx
+    entry_route: /war-room/{session_id}
+    user_interactions:
+      - Click the red "END SESSION" button in the top command bar
+      - A confirmation prompt appears showing "CONFIRM? YES / NO"
+      - Click "YES" to confirm
+      - See "TERMINATING SESSION" loading overlay
+      - See "SESSION TERMINATED" modal with "DOWNLOAD ALL" and "EXIT ROOM" buttons
+      - Click "EXIT ROOM" to return to landing page
+    api_calls:
+      - method: DELETE
+        endpoint: /api/sessions/{session_id}
+    auth_required: false
+  - name: Crisis Board
+    description: Center panel showing decisions, conflicts, and intel items from the crisis simulation
+    files:
+      - src/components/war-room/CrisisBoard.tsx
+    entry_route: /war-room/{session_id}
+    user_interactions:
+      - View agreed decisions with timestamps
+      - View open conflicts between agents
+      - View critical intel items
+    api_calls:
+      - method: GET
+        endpoint: /api/sessions/{session_id}/board
+    auth_required: false
+  - name: Crisis Feed
+    description: Bottom-left live feed of all events, agent statements, and system messages
+    files:
+      - src/components/war-room/CrisisFeed.tsx
+    entry_route: /war-room/{session_id}
+    user_interactions:
+      - View scrolling feed items with timestamps, source agent names, and text content
+      - New items appear at the top with animation
+    api_calls:
+      - method: GET
+        endpoint: /api/sessions/{session_id}/feed
+    auth_required: false
+  - name: Right Panel Intelligence
+    description: Right sidebar showing room intelligence stats, agent trust scores, crisis posture, and resolution score
+    files:
+      - src/components/war-room/RightPanels.tsx
+    entry_route: /war-room/{session_id}
+    user_interactions:
+      - View Agents Active count, Conflicts Open, Decisions Locked, Intel Items, Session Health
+      - View Agent Trust Scores as percentages
+      - View Crisis Posture with axes (Public Exposure, Legal Exposure, Internal Stability)
+      - View Resolution Score with trend and contributors
+    api_calls:
+      - method: GET
+        endpoint: /api/sessions/{session_id}/intel
+      - method: GET
+        endpoint: /api/sessions/{session_id}/posture
+      - method: GET
+        endpoint: /api/sessions/{session_id}/score
+    auth_required: false
+  - name: Top Command Bar
+    description: Top bar showing crisis title, UTC time, mic status, LIVE badge, threat level, countdown timer, and session controls
+    files:
+      - src/components/war-room/TopCommandBar.tsx
+    entry_route: /war-room/{session_id}
+    user_interactions:
+      - View crisis title (click to expand details with domain and brief)
+      - View current UTC time
+      - View mic status (ACTIVE/MUTED)
+      - View LIVE indicator
+      - View threat level badge (CONTAINED/ELEVATED/CRITICAL/MELTDOWN)
+      - View session countdown timer
+      - Click UPDATE DOCUMENT to finalize documents
+      - Click END SESSION to terminate
+    api_calls: []
+    auth_required: false
+known_limitations:
+  - issue: Session bootstrapping takes 30-90 seconds as LLM agents are generated asynchronously
+    location: src/app/page.tsx
+    impact: Tests must wait for the assembling screen to complete before interacting with the war room
+  - issue: No login or authentication page exists - sessions are created directly from the landing page
+    location: src/app/page.tsx
+    impact: All tests must start from the root URL / and there is no /login route
+  - issue: Session duration is a range slider, not a text input
+    location: src/app/page.tsx
+    impact: Cannot type a value directly - must interact with the slider element

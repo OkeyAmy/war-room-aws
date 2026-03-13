@@ -216,7 +216,7 @@ To run the full stack locally for development:
 
 * Node.js (v18+)
 * Python 3.10+
-* Requested API Keys (AI model, ElevenLabs, LiveKit) specified in `./backend/.env`
+* Requested API Keys (AI model, LiveKit) specified in `./backend/.env`
 
 ### Run the Backend
 

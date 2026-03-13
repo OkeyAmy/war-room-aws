@@ -44,7 +44,8 @@ demo/
 
 # TestSprite
 .testsprite/
-**/testsprite_tests/tmp/
+testsprite_tests/tmp/prd_files
+testsprite_tests/tmp/mcp.log
 
 # Demos & Presentations
 pitch/
